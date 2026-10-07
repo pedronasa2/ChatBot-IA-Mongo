@@ -1,0 +1,17 @@
+**/node_modules/
+**/target/
+**/dist/
+**/.angular/
+**/test-results/
+**/playwright-report/
+.env
+.env.*
+!.env.example
+*.log
+
+infra/backups/
+**/integracao-local.properties
+
+.idea/
+*.iml
+**/banco-local.properties

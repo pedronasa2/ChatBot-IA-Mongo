@@ -1,0 +1,33 @@
+{
+  "name": "Transcrever áudio na Groq",
+  "nodes": [
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/audio/transcriptions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {"parameterType": "formBinaryData", "name": "file", "inputDataFieldName": "data"},
+            {"name": "model", "value": "whisper-large-v3-turbo"},
+            {"name": "language", "value": "pt"},
+            {"name": "response_format", "value": "json"}
+          ]
+        },
+        "options": {"response": {"response": {"responseFormat": "json"}}}
+      },
+      "id": "0b05ce83-f916-4739-a096-ad066ad7ff62",
+      "name": "Transcrever áudio na Groq",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [800, 300]
+    }
+  ],
+  "connections": {},
+  "settings": {},
+  "pinData": {},
+  "active": false
+}

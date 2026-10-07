@@ -1,0 +1,5 @@
+# Publica o PostgreSQL somente no loopback para desenvolvimento fora do Docker.
+services:
+  postgres:
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5433}:5432"

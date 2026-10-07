@@ -1,0 +1,59 @@
+<div class="superusuario-heading">
+  <div><span class="eyebrow">ADMINISTRAÇÃO DO SISTEMA</span><h1>Painel do desenvolvedor</h1><p class="lead">Regras globais e visão de todos os atendimentos.</p></div>
+  <span class="badge"><ui-icon name="shield" />Acesso exclusivo</span>
+</div>
+<nav class="superusuario-secoes" aria-label="Seções do superusuário">
+  <button mat-button [class.active]="secao()==='prompt'" (click)="secao.set('prompt')">Prompt global</button>
+  <button mat-button [class.active]="secao()==='metricas'" (click)="secao.set('metricas'); atualizarMetricas()">Métricas</button>
+</nav>
+@if(erro()) { <p class="alert erro" role="alert">{{erro()}}</p> }
+@if(sucesso()) { <p class="alert" role="status">{{sucesso()}}</p> }
+@if(carregando()) { <p role="status">Carregando administração…</p> }
+@else if(!promptSalvo()) {
+  <button mat-flat-button (click)="carregar()">Tentar novamente</button>
+}
+@else {
+@if(secao()==='prompt') {
+  <div class="configuration-layout">
+    <form class="panel editor" [formGroup]="formularioPrompt" (ngSubmit)="salvarPrompt()">
+      <div class="panel-heading"><span class="section-icon"><ui-icon name="shield" /></span><div><h2>Prompt de sistema global</h2><p>As regras principais de todos os assistentes.</p></div></div>
+      <p class="muted">As configurações de cada empresa complementam estas regras globais.</p>
+      <p class="context-note">O prompt fica salvo para a integração de atendimento. O fluxo n8n ainda precisa consumir essas regras.</p>
+      <mat-form-field appearance="outline">
+        <mat-label>System prompt supremo</mat-label>
+        <textarea matInput formControlName="promptSistema" rows="12" maxlength="40000" placeholder="Escreva aqui as regras gerais de atendimento, limites e comportamento dos assistentes."></textarea>
+        <mat-hint>{{numero(formularioPrompt.controls.promptSistema.value.length)}} / 40.000 caracteres</mat-hint>
+        <mat-error>Informe as regras globais, até 40.000 caracteres.</mat-error>
+      </mat-form-field>
+      <div class="salvar-row"><span class="muted">{{formularioPrompt.dirty?'Há alterações não salvas.':promptSalvo()!.revisao?'Versão '+promptSalvo()!.revisao+' salva.':'Nenhum prompt salvo ainda.'}}</span><button mat-flat-button type="submit" [disabled]="salvando()||formularioPrompt.invalid||!formularioPrompt.dirty">{{salvando()?'Salvando…':'Salvar prompt global'}}</button></div>
+    </form>
+    <div class="context-column">
+      <section class="panel context-card"><div class="panel-heading"><ui-icon name="shield" /><h2>Somente você</h2></div><p>Usuários das empresas não podem acessar nem alterar este prompt.</p>@if(promptSalvo()!.revisao){<div class="context-detail"><span>Última alteração</span><strong>{{data(promptSalvo()!.atualizadoEm)}}</strong></div><p class="context-note">{{promptSalvo()!.atualizadoPorEmail}}</p>}</section>
+      <section class="panel context-card"><div class="panel-heading"><ui-icon name="layers" /><h2>Prévia por empresa</h2></div><p>Confira o prompt salvo junto aos dados e ao rascunho do bot.</p>
+        <mat-form-field appearance="outline"><mat-label>Empresa da prévia</mat-label><mat-select [value]="empresaPrevia()" (selectionChange)="empresaPrevia.set($event.value); previa.set(null)">@for(empresa of metricas()?.porEmpresa || [];track empresa.empresaId){<mat-option [value]="empresa.empresaId">{{empresa.nomeEmpresa}}</mat-option>}</mat-select></mat-form-field>
+        <button mat-stroked-button (click)="visualizarPrompt()" [disabled]="!empresaPrevia()||formularioPrompt.dirty||!promptSalvo()!.revisao||carregandoPrevia()">{{carregandoPrevia()?'Carregando…':'Ver prompt combinado'}}</button>
+        @if(formularioPrompt.dirty){<p class="context-note">Salve para visualizar suas novas regras.</p>}
+        <p class="context-note">Esta prévia não publica o bot nem envia mensagens.</p>
+      </section>
+    </div>
+  </div>
+  @if(previa();as texto){<section class="panel prompt-previa"><h2>Prévia — {{texto.nomeEmpresa}}</h2><pre>{{texto.promptComposto}}</pre></section>}
+  <section class="panel historico-prompts"><h2>Histórico do prompt global</h2><p class="muted">As 20 versões mais recentes, com data e autoria.</p>
+    @if(historico().length===0){<p>Nenhuma alteração registrada ainda.</p>}
+    @for(versao of historico();track versao.revisao){<details><summary><strong>Versão {{versao.revisao}}</strong><span>{{data(versao.criadoEm)}}</span></summary><p class="muted">{{versao.usuarioResponsavelEmail}}</p><pre>{{versao.promptSistema}}</pre></details>}
+  </section>
+}
+@if(secao()==='metricas') {
+  @if(metricas();as resumo){
+    <div class="metricas-atualizacao"><p class="muted">Atualizado em {{data(resumo.atualizadoEm)}} · atualização a cada 30 segundos</p><button mat-stroked-button (click)="atualizarMetricas()" [disabled]="atualizandoMetricas()">{{atualizandoMetricas()?'Atualizando…':'Atualizar métricas'}}</button></div>
+    @if(resumo.totalMensagens===0&&resumo.errosUltimas24Horas===0){<div class="coleta-pendente"><ui-icon name="link" /><div><strong>Aguardando eventos do n8n</strong><p>Os números começarão a subir quando o fluxo registrar os envios e recebimentos.</p></div></div>}
+    <div class="metricas-cards">
+      @for(cartao of [{rotulo:'Mensagens no último minuto',valor:resumo.mensagensUltimoMinuto,descricao:'Janela móvel de 60 segundos'},{rotulo:'Mensagens nas últimas 24h',valor:resumo.mensagensUltimas24Horas,descricao:'Recebidas e enviadas com sucesso'},{rotulo:'Total de mensagens',valor:resumo.totalMensagens,descricao:'Desde o início da coleta'},{rotulo:'Erros nas últimas 24h',valor:resumo.errosUltimas24Horas,descricao:'Falhas informadas pelo fluxo'}];track cartao.rotulo){<section class="panel metrica-card"><span class="eyebrow">{{cartao.rotulo}}</span><strong>{{numero(cartao.valor)}}</strong><p>{{cartao.descricao}}</p></section>}
+    </div>
+    <section class="panel grafico-mensagens"><div class="panel-heading"><ui-icon name="chat" /><div><h2>Volume por minuto</h2><p>Os últimos 15 minutos, incluindo o minuto atual.</p></div></div><figure><div class="grafico-barras" role="img" aria-label="Quantidade de mensagens em cada um dos últimos quinze minutos">@for(volume of resumo.volumePorMinuto;track volume.minuto){<div class="grafico-coluna" [attr.title]="hora(volume.minuto)+': '+volume.mensagens+' mensagens'"><span>{{volume.mensagens}}</span><i [style.height.%]="alturaBarra(volume.mensagens)"></i></div>}</div><figcaption><span>{{hora(resumo.volumePorMinuto[0].minuto)}}</span><span>{{hora(resumo.volumePorMinuto[resumo.volumePorMinuto.length-1].minuto)}}</span></figcaption></figure></section>
+    <section class="panel metricas-empresas"><h2>Mensagens por empresa</h2><div class="tabela-metricas"><table><thead><tr><th scope="col">Empresa</th><th scope="col">Últimas 24h</th><th scope="col">Total</th></tr></thead><tbody>@for(empresa of resumo.porEmpresa;track empresa.empresaId){<tr><th scope="row">{{empresa.nomeEmpresa}}</th><td>{{numero(empresa.mensagensUltimas24Horas)}}</td><td>{{numero(empresa.totalMensagens)}}</td></tr>}@empty{<tr><td colspan="3">Nenhuma empresa cadastrada.</td></tr>}</tbody></table></div></section>
+    <section class="panel metricas-detalhes"><div><span>Recebidas</span><strong>{{numero(resumo.mensagensRecebidas)}}</strong></div><div><span>Enviadas</span><strong>{{numero(resumo.mensagensEnviadas)}}</strong></div><div><span>Empresas</span><strong>{{numero(resumo.totalEmpresas)}}</strong></div><div><span>Usuários ativos</span><strong>{{numero(resumo.totalUsuariosAtivos)}}</strong></div><div><span>Última mensagem</span><strong>{{data(resumo.ultimaMensagem)}}</strong></div></section>
+    <section class="panel integracao-metricas"><details><summary>Como alimentar as métricas pelo n8n</summary><p>Depois do envio confirmado, use um nó HTTP Request para registrar o evento em <code>POST /api/integracoes/mensagens</code>, com a credencial de integração no cabeçalho <code>X-Token-Metricas</code>.</p><p>Informe a empresa, um ID estável do evento, a origem, a direção, o resultado e a data. Repetir o mesmo evento não aumenta os números.</p><p class="context-note">A credencial fica no backend e no n8n. Ela permite registrar eventos, sem acessar o painel ou editar o prompt global.</p></details></section>
+  }
+}
+}

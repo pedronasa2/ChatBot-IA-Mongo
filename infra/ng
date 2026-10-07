@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+set -euo pipefail
+# Usa o CLI instalado no projeto, inclusive a partir da raiz do repositório.
+search_dir="$PWD"
+while true; do
+  if [[ -f "$search_dir/angular.json" && -f "$search_dir/node_modules/@angular/cli/bin/ng.js" ]]; then
+    frontend_dir="$search_dir"
+    break
+  fi
+  if [[ -f "$search_dir/frontend/angular.json" && -f "$search_dir/frontend/node_modules/@angular/cli/bin/ng.js" ]]; then
+    frontend_dir="$search_dir/frontend"
+    break
+  fi
+  if [[ "$search_dir" == / ]]; then
+    echo 'Execute ng dentro de um projeto Angular com as dependências instaladas.' >&2
+    exit 1
+  fi
+  search_dir="$(dirname "$search_dir")"
+done
+node_bin="${PANEL_NODE_BIN:-$HOME/.local/share/painel/node26/bin/node}"
+if [[ ! -x "$node_bin" ]]; then
+  node_bin="$(command -v node)"
+fi
+if [[ "${1:-}" == server ]]; then
+  shift
+  set -- serve "$@"
+fi
+cd "$frontend_dir"
+exec "$node_bin" node_modules/@angular/cli/bin/ng.js "$@"

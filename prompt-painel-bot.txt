@@ -1,0 +1,198 @@
+PROMPT DE IMPLEMENTAÇÃO — PAINEL DE CONFIGURAÇÃO DE BOTS
+
+OBJETIVO
+Construa um MVP de uma plataforma web para pequenas empresas configurarem um bot de atendimento que funciona com Chatwoot e n8n. O empresário deve conseguir entrar no painel, cadastrar informações do negócio, ajustar o atendimento e testar o bot sem editar workflows ou prompts técnicos.
+
+A primeira entrega precisa funcionar de ponta a ponta: login → configuração da empresa → gravação no PostgreSQL → consulta autenticada pelo n8n → uso desses dados na resposta do bot. Não construa toda a plataforma de uma vez. Entregue partes executáveis e verificáveis.
+
+CONTEXTO EXISTENTE
+Já existe um fluxo básico no n8n: Webhook do Chatwoot → Filter de mensagens recebidas → Edit Fields → agente de IA → preparação de resposta → nó comunitário do Chatwoot que responde na conversa original.
+O pacote comunitário utilizado é @fazer-ai/n8n-nodes-chatwoot. O fluxo já tem separação da memória por conta, caixa e conversa. Ele ainda não implementa uma plataforma multiempresa completa nem uma transferência robusta para humano.
+As credenciais existentes pertencem aos respectivos serviços. Não copie segredos para o código, repositório, exemplos, logs ou navegador. Descubra a configuração real antes de integrar. Não presuma que os identificadores da conta de teste servem para todos os clientes.
+
+STACK E ORGANIZAÇÃO
+- Front-end: Angular com TypeScript, Angular Material e Reactive Forms.
+- Back-end: Java com Spring Boot, Spring Web MVC, Spring Security, validação de entrada e Spring Data JPA.
+- Banco: PostgreSQL, com migrações Flyway.
+- Escolha versões estáveis, mantidas e compatíveis entre si. Registre as versões e fixe dependências. Não use versões de preview. Confira as versões suportadas antes de inicializar o projeto.
+- Use uma única aplicação de back-end, organizada por funcionalidades: autenticação, empresas, configurações, canais e atendimento.
+- Organize o repositório com frontend/, backend/, infra/ e docs/.
+- Utilize PostgreSQL também nos testes de integração que dependam de seu comportamento; Testcontainers é uma opção.
+- O n8n continua responsável por orquestrar mensagens e chamadas à IA. Não implemente outro motor de chatbot no Java.
+
+ESCOPO DO MVP
+1. Login e logout; sessão expirada deve levar o usuário de volta ao login de forma clara.
+2. Acesso por empresa: um usuário só pode consultar ou alterar empresas das quais seja membro.
+3. Cadastro das informações da empresa e configurações do bot.
+4. Horários semanais e exceções em datas específicas.
+5. Perguntas frequentes e avisos temporários.
+6. Rascunho, teste e publicação das configurações.
+7. Pausa global do bot por empresa.
+8. Transferência para atendimento humano e retomada por conversa, em uma etapa posterior à primeira integração de texto.
+
+Não implementar nesta fase: agenda, pagamentos, cobrança de assinatura, estoque, campanhas, leitura de arquivos, áudio, pesquisa na web ou cadastro integrado da Meta. A vinculação inicial da conta/caixa Chatwoot pode ser feita pelo administrador da plataforma. Não apresentar botões para funcionalidades que ainda não existem.
+
+INTERFACE
+Crie um painel responsivo, utilizável no celular e no desktop, com aparência sóbria e profissional. Use Angular Material de forma consistente, com tipografia legível, poucos destaques de cor e estados de foco visíveis.
+As telas devem ter estados de carregamento, vazio, erro e sucesso. Botões que salvam devem indicar progresso e impedir cliques duplicados. Informe alterações não salvas. Use rótulos em português brasileiro e mensagens que expliquem como corrigir o problema.
+
+Telas propostas:
+- Visão geral: empresa selecionada, bot ativo/pausado, configuração publicada e estado conhecido da integração. Não inventar estatísticas ou mostrar “conectado” sem verificação.
+- Meu negócio: nome comercial, descrição, endereço, contatos, site e descrição de serviços ou produtos. Um campo livre não equivale a estoque atualizado.
+- Horários: dia da semana, um ou mais intervalos de funcionamento, fuso horário e indicação de fechado. Exceções por data prevalecem sobre o horário semanal. Permitir fechar o dia inteiro ou definir intervalos especiais. Validar intervalos inválidos e sobreposições. No MVP, dividir expedientes que cruzam a meia-noite entre os dois dias.
+- Bot: nome de apresentação, tom de voz, uso de emojis, instruções adicionais e situações para encaminhar a uma pessoa. O cliente não edita credenciais ou regras internas de segurança.
+- Perguntas frequentes: pergunta, resposta, edição e exclusão com confirmação apropriada.
+- Avisos temporários: texto, início e fim de validade, respeitando o fuso da empresa. Avisos vencidos deixam de compor o contexto enviado à IA.
+- Testar e publicar: conversa de teste com a configuração em rascunho; botão separado para publicar. O teste nunca envia mensagens ao WhatsApp de consumidores.
+
+MODELAGEM INICIAL
+Use identificadores estáveis, created_at e updated_at. Guarde instantes com fuso apropriado no banco e horários semanais como horários locais associados ao fuso da empresa.
+
+Entidades mínimas sugeridas, ajustáveis se houver uma justificativa concreta:
+- companies: identificação e informações principais da empresa, timezone e estado global do bot.
+- users: identidade de login, senha armazenada com algoritmo adequado e estado da conta.
+- company_memberships: vínculo entre usuário e empresa, com papel owner ou editor. Ambos podem configurar o bot; gestão de membros fica restrita ao owner.
+- bot_configuration_versions: versão, empresa, estado draft/published, instruções, tom, autor e data de publicação.
+- business_hours e business_hour_intervals: horários associados à versão de configuração.
+- business_hour_exceptions e exception_intervals: exceções por data associadas à mesma versão.
+- faq_entries: perguntas e respostas da versão.
+- temporary_notices: avisos e validade da versão.
+- channel_bindings: empresa, referência da instalação Chatwoot, account_id e inbox_id. A combinação instalação/conta/caixa deve ser única.
+- conversation_automation_state: conversa, vínculo do canal e estado bot/human/paused, para a etapa de atendimento humano.
+- audit_events: alterações relevantes, responsável e versão, sem registrar segredos.
+
+Empresas, membros e canais ficam em tabelas relacionais. Use texto para instruções. JSONB é permitido para extensões pequenas e bem definidas; não use um documento gigante como substituto de toda a modelagem.
+Publicar deve criar ou selecionar um conjunto consistente de configuração, horários, FAQs e avisos em uma transação. A integração não pode receber metade da versão antiga e metade da nova. Mantenha o contexto de teste separado da memória de produção.
+
+AUTENTICAÇÃO E ISOLAMENTO
+Para o painel no mesmo domínio, prefira sessão no servidor e cookie HttpOnly, Secure em produção e SameSite apropriado, mantendo proteção CSRF. No desenvolvimento, explique qualquer diferença necessária de configuração.
+Valide no back-end o vínculo do usuário com a empresa em toda operação. Não confie apenas no ID enviado pelo navegador ou em filtros da interface. Não exponha tokens administrativos do Chatwoot, n8n ou banco ao front-end.
+Crie um procedimento local explícito para provisionar o primeiro usuário e empresa, sem senha padrão fixa. Autocadastro público, convites e recuperação por e-mail podem ficar fora da primeira entrega; documente essa limitação.
+
+INTEGRAÇÃO COM N8N E CHATWOOT
+O back-end deve ser a fonte de verdade das configurações publicadas. Exponha uma API interna autenticada, separada da sessão do painel, com credencial própria e escopo mínimo para o n8n. A credencial deve permitir apenas os canais autorizados.
+O n8n identifica o canal pela instalação Chatwoot, conta e caixa, busca a configuração publicada e verifica se o bot está ativo antes de chamar a IA. Canal desconhecido ou sem configuração publicada não pode usar uma configuração genérica de outra empresa.
+A resposta dessa API deve trazer somente o necessário: empresa, versão, informações do negócio, orientações, FAQs, avisos vigentes e horário calculado pelo servidor. Calcule funcionamento e próxima abertura com base no fuso e nas exceções; não dependa da IA para decidir se o local está aberto.
+Use contrato HTTP documentado. Uma rota sugerida é POST /internal/bot-context/resolve. Valide os campos e as permissões; não aceite URLs arbitrárias de serviços enviadas pelo navegador.
+Mantenha um modelo base de instruções controlado pela plataforma e acrescente os dados aprovados da empresa. Instruções editadas pelo cliente não concedem acesso a outras empresas nem permitem executar ferramentas indiscriminadamente.
+Antes de ativar em produção, autentique a origem dos eventos do Chatwoot por assinatura ou mecanismo equivalente suportado, e trate reentregas do webhook para evitar respostas duplicadas. Não prometa entrega exatamente uma vez se não houver mecanismo que a garanta.
+
+ATENDIMENTO HUMANO — ETAPA SEGUINTE
+Quando o consumidor pedir uma pessoa ou o bot não conseguir atender, registre a transferência e altere o atendimento no Chatwoot conforme a API disponível. Só confirme que houve encaminhamento depois de a operação ter sucesso.
+Enquanto a conversa estiver em atendimento humano, o bot não responde. Reconfira esse estado antes do envio, pois uma pessoa pode assumir enquanto a IA gera a resposta. Defina uma ação explícita para retomar o bot.
+Não envie mensagens prometendo contato futuro, agendamento ou ações que o sistema não realizou. Exiba falhas de integração de modo recuperável para o operador.
+
+TESTE DO BOT NO PAINEL
+O teste deve usar a versão em rascunho, uma sessão de teste isolada e o mesmo mecanismo de composição do contexto de produção. O back-end pode solicitar a execução de um caminho de teste no n8n, mas esse caminho não pode alcançar o nó que envia mensagens reais no Chatwoot.
+Se não houver credenciais ou provedor configurado, mostre que o teste real está indisponível. Um modo simulado precisa ser identificado como simulação.
+
+ENTREGAS POR ETAPA
+A. Base executável: projeto, migrações, login, empresa e uma tela que salva configurações no PostgreSQL.
+B. Configuração completa: horários, exceções, FAQs, avisos, rascunho e publicação.
+C. Integração: contrato autenticado de contexto, configuração do n8n e teste sem envio externo.
+D. Atendimento humano: pausa, transferência, retomada e tratamento de eventos duplicados.
+Conclua e verifique cada etapa antes de acrescentar a seguinte. Para integração com serviços reais, use apenas acessos disponibilizados e escopo autorizado. Não publique workflows, instale serviços ou envie mensagens a clientes apenas para demonstrar progresso.
+
+CRITÉRIOS DE ACEITE
+- Usuário de uma empresa não consegue ler ou alterar dados de outra, mesmo manipulando IDs nas requisições.
+- Salvar e recarregar a tela preserva os dados.
+- O contexto da IA usa a versão publicada; alterações no rascunho não afetam atendimento real.
+- Horários, exceções e validade de avisos respeitam o fuso configurado.
+- Pausa global e pausa por conversa impedem novas respostas automáticas nos pontos de controle previstos.
+- Eventos enviados pelo bot e notas privadas não geram ciclos de resposta.
+- O teste do painel não envia mensagens pelo canal real.
+- Falhas de banco, n8n, Chatwoot ou IA são visíveis e não aparecem como sucesso.
+- Segredos não aparecem em respostas da API, logs ou arquivos versionados.
+- As telas principais funcionam em desktop e celular, com navegação por teclado e rótulos acessíveis.
+
+VALIDAÇÃO E OPERAÇÃO
+Escreva testes úteis para autorização entre empresas, publicação de versões, horários/exceções e contratos de integração. Faça um teste de navegador cobrindo login, edição, publicação e recarga dos dados. Use mocks para evitar envios externos durante testes automatizados.
+Forneça instruções de execução local, arquivos de exemplo de variáveis sem segredos e configuração de desenvolvimento com Docker Compose. Prepare orientação de deploy no Easypanel/VPS, incluindo persistência do PostgreSQL, backups fora da VPS e teste de restauração. Meça consumo antes de prometer capacidade.
+Ao finalizar cada etapa, informe o que funciona, como foi verificado e o que continua pendente. Não classifique uma integração simulada como teste real.
+
+MÓDULO OPCIONAL DE CANDIDATOS — ESCOPO APROVADO
+Acrescente este módulo depois da base de login e empresas. Ele pertence ao sistema web e à API Java. Não implemente extração de documentos, configuração do n8n ou armazenamento de arquivos nesta entrega. A integração externa enviará apenas dados estruturados extraídos do currículo.
+
+Objetivo: permitir que uma empresa mantenha um banco de candidatos, consulte contatos e experiências, corrija dados, faça anotações e registre quem já foi contatado. Não implementar classificação automática de candidatos, pontuação, decisão de contratação ou envio automático de mensagens.
+
+HABILITAÇÃO E PERMISSÕES
+- Criar company_modules, com company_id, module_key e enabled; combinação de empresa e módulo única.
+- O administrador da plataforma habilita candidates para a empresa. Para o primeiro teste, um comando administrativo documentado pode fazer isso; não é necessário construir um painel administrativo completo.
+- O menu só aparece para empresas com o módulo habilitado. O back-end também verifica a habilitação em todas as rotas; esconder o menu não é controle de acesso.
+- Membros autorizados podem listar, consultar, criar e editar candidatos, registrar contatos e anotações. Restringir a exclusão ao owner no MVP.
+- Consultas e alterações sempre usam a empresa autorizada da sessão ou da integração. Nunca confiar em company_id fornecido pela IA ou no corpo da requisição.
+
+ENTIDADES
+1. Candidate: id, company_id, full_name opcional, phone opcional, email opcional, professional_summary opcional, skills como lista de textos, status active/archived, source manual/integration, source_reference opcional, created_at e updated_at. Usar controle de versão para detectar edição concorrente.
+   A lista de habilidades pode ser uma coleção de valores em tabela candidate_skills, vinculada ao candidato. Não criar um catálogo complexo de habilidades nesta fase.
+2. CandidateExperience: id, candidate_id, company_id, employer opcional, job_title opcional, description opcional, start_year/start_month opcionais, end_year/end_month opcionais, is_current opcional e display_order.
+3. CandidateEducation: id, candidate_id, company_id, institution opcional, course opcional, level opcional, completion_status opcional, start_year/start_month opcionais, end_year/end_month opcionais e display_order.
+4. CandidateNote: id, candidate_id, company_id, body, author_user_id, created_at e updated_at. Anotação interna escrita por usuário; a importação não pode sobrescrevê-la.
+5. CandidateContactRecord: id, candidate_id, company_id, contacted_at, channel, note opcional e recorded_by_user_id. Registrar contato não envia nenhuma mensagem. Derivar “já contatado” e último contato desses registros para evitar estados contraditórios.
+6. IntegrationSubmission: company_id, integration_id, idempotency_key, payload_hash, candidate_id, status e created_at. Usar uma restrição única que impeça processar duas vezes a mesma submissão da integração. Evitar guardar uma cópia integral do currículo nesta tabela.
+
+Relacionamentos: uma empresa possui vários candidatos; um candidato possui várias experiências, formações, anotações e registros de contato. Garantir no banco e na aplicação que um registro filho não possa apontar para candidato de outra empresa. Usar chaves estrangeiras e restrições compostas quando necessário.
+Não inventar datas completas a partir de anos ou meses. Se o currículo só informar um ano, preservar essa precisão. Informação ausente deve ser null ou lista vazia, conforme o contrato. Não preencher idade, gênero, raça, religião, saúde ou outros atributos sensíveis inferidos do texto.
+
+TELAS
+Lista de candidatos:
+- Pesquisa por nome, contato, habilidade, cargo ou empresa de experiências anteriores.
+- Filtros por habilidade, já contatado/não contatado e ativo/arquivado.
+- Paginação e ordenação no servidor, com tamanho máximo de página.
+- Colunas: nome ou “Nome não informado”, contato disponível, resumo curto, último contato e data de cadastro. No celular, adaptar para cartões ou uma lista legível.
+- Ações: abrir ficha e adicionar candidato manualmente.
+
+Ficha do candidato:
+- Seções de dados pessoais de contato, resumo profissional, habilidades, experiências e formação.
+- Edição dos campos com validação e detecção de alterações não salvas.
+- Campos ausentes aparecem como “Não informado”; não converter ausência em informação fictícia.
+- Lista de anotações internas com autor e data.
+- Ação “Registrar contato”, pedindo data, canal e observação opcional. Mostrar explicitamente que é apenas registro, sem envio de mensagem.
+- Ação arquivar/restaurar e exclusão confirmada para usuários autorizados. Arquivar não apaga dados; a interface deve diferenciar as ações.
+- Se outra pessoa alterar a ficha durante a edição, avisar sobre o conflito em vez de sobrescrever silenciosamente.
+
+API E CONTRATO DE DADOS
+Separar DTOs de entrada/saída das entidades JPA. Não aceitar vinculação automática de propriedades internas, IDs de empresa ou campos de auditoria.
+Expor rotas autenticadas para listar, consultar, criar e editar candidatos e seus dados; adicionar/editar anotações; registrar contato; arquivar/restaurar; excluir.
+Documentar um contrato de importação em OpenAPI, com exemplos sintéticos e sem informações pessoais reais. O contrato recebe nome, contatos, resumo, lista de habilidades, experiências e formações. Nenhum endpoint deste módulo recebe arquivo, binário, base64 ou URL de anexo para download.
+Disponibilizar uma rota interna de importação usando a credencial de integração com escopo específico para candidatos e empresa autorizada. Ela não recebe permissões de gestão de usuários, alteração de configuração do bot ou leitura de outras empresas.
+Validar comprimentos máximos, tipos, tamanho das listas e formato dos contatos presentes. Campos opcionais ausentes são válidos; rejeitar submissão completamente vazia. Não inventar código de país para telefone ambíguo. Preservar o contato informado e só gerar uma versão normalizada quando isso for possível sem suposições.
+Persistir candidato, experiências e formações em uma transação. Uma falha não pode deixar uma ficha parcialmente importada.
+
+IMPORTAÇÃO E DUPLICIDADE
+- Repetição da mesma chave de idempotência com o mesmo payload devolve o resultado já registrado e não cria outro candidato.
+- A mesma chave com conteúdo diferente retorna conflito explícito.
+- Referência estável da origem, quando disponível, identifica reenvios dentro da mesma empresa e integração.
+- E-mail ou telefone coincidente gera uma indicação de possível duplicidade, nunca uma mesclagem automática entre pessoas. Contatos podem ser compartilhados.
+- Atualizar um candidato já existente exige uma referência identificada e autorização para aquela empresa. Não sobrescrever automaticamente correções humanas, anotações ou histórico de contatos.
+- Na primeira versão, se a importação encontrar uma ficha existente que precisaria ser atualizada, retornar resultado “revisão necessária” e manter os dados atuais. Documentar esse resultado para a integração; a edição manual continua disponível.
+
+BUSCA E ARMAZENAMENTO
+Guardar apenas os campos textuais e estruturados necessários ao módulo. Não criar armazenamento de currículo original nem interface de anexos. A retenção de arquivos pelo Chatwoot ou n8n é assunto separado, fora desta implementação.
+Começar com consultas PostgreSQL e índices compatíveis com os filtros e o volume esperado. Não adicionar banco vetorial ou busca semântica sem uma necessidade demonstrada.
+Toda consulta, inclusive contagens, sugestões de duplicidade e buscas por habilidades, deve ser limitada à empresa autorizada.
+Na exclusão definitiva, remover os dados dependentes de forma consistente. Auditoria deve registrar a ação sem conservar uma cópia dos dados pessoais excluídos. Não registrar currículos ou payloads completos em logs.
+
+TAREFAS DE ENTREGA DO MÓDULO
+1. Criar migrações, entidades e regra de habilitação por empresa.
+2. Implementar API de candidatos, autorização, validações e importação idempotente.
+3. Criar lista com pesquisa, filtros e paginação.
+4. Criar ficha com edição, experiências, formação e habilidades.
+5. Adicionar anotações, registro de contato, arquivamento e exclusão.
+6. Documentar contrato de importação e exemplos para a futura integração, sem alterar o n8n.
+7. Validar o módulo com dados fictícios e testes de integração.
+
+CRITÉRIOS DE ACEITE DO MÓDULO
+- Empresa sem o módulo habilitado não acessa telas nem endpoints de candidatos.
+- Usuário ou integração de uma empresa não consulta, edita ou vincula registros de outra, mesmo manipulando IDs.
+- Importação de dados válidos cria candidato e seus registros relacionados numa transação.
+- Reentrega idêntica não duplica o cadastro; conflito de chave e possível duplicidade têm respostas distintas.
+- Dados ausentes e datas incompletas preservam sua incerteza.
+- Pesquisa e filtros encontram dados recém-salvos, com paginação correta e sem multiplicar candidatos por causa de relacionamentos.
+- Alterações manuais persistem e não são sobrescritas silenciosamente por importação ou edição concorrente.
+- Registrar contato atualiza o histórico e o filtro “já contatado”, sem enviar mensagens.
+- Nenhum arquivo é armazenado pelo módulo.
+- Testes cobrem isolamento entre empresas, habilitação, validação, atomicidade, idempotência, edição concorrente e exclusão de dependências. Um teste de navegador cobre cadastro, busca, edição e registro de contato.
+
+EVOLUÇÃO FUTURA — NÃO IMPLEMENTAR AGORA
+Agenda com FullCalendar padrão no Angular, profissionais, serviços, disponibilidade, agendamento/remarcação/cancelamento e lembretes. O Java e o PostgreSQL serão responsáveis por validar conflitos e concorrência. Uma alteração visual no calendário só será confirmada depois de salva no servidor. Recursos Premium só entram após decisão explícita sobre necessidade e licença.

@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "projects": {
+    "painel": {
+      "projectType": "application",
+      "root": "",
+      "sourceRoot": "src",
+      "architect": {
+        "build": {
+          "builder": "@angular/build:application",
+          "options": {
+            "browser": "src/main.ts",
+            "tsConfig": "tsconfig.json",
+            "index": "src/index.html",
+            "styles": [
+              "src/styles.scss"
+            ],
+            "outputPath": "dist/painel"
+          },
+          "configurations": {
+            "production": {
+              "outputHashing": "all",
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "800kB",
+                  "maximumError": "1MB"
+                }
+              ]
+            }
+          },
+          "defaultConfiguration": "production"
+        },
+        "serve": {
+          "builder": "@angular/build:dev-server",
+          "options": {
+            "buildTarget": "painel:build",
+            "host": "127.0.0.1",
+            "port": 4207,
+            "proxyConfig": "proxy.e2e.json"
+          }
+        }
+      }
+    }
+  },
+  "cli": {
+    "analytics": "70292b93-77eb-4b29-a110-951a890a7c9d"
+  }
+}
