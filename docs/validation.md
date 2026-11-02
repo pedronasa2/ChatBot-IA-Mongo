@@ -8,3 +8,5 @@
 - GitHub Actions: workflow preparado para repetir testes, compilar, publicar no GHCR e opcionalmente acionar o EasyPanel. Execução remota e deploy precisam ser verificados separadamente.
 
 O banco PostgreSQL original e os serviços da VPS não foram alterados. Não houve migração de dados para MongoDB nem teste de restauração de backup. O provisionamento interativo precisa ser executado no ambiente de destino, com senha definida pelo administrador.
+
+A primeira execução remota encerrou no preparo do MongoDB 8.0 antes dos testes; CI ajustado para MongoDB 7.0, já validado localmente, e diagnóstico de logs adicionado. A configuração do MongoDB da VPS continua independente.
