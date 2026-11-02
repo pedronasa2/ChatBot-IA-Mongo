@@ -10,3 +10,7 @@
 O banco PostgreSQL original e os serviços da VPS não foram alterados. Não houve migração de dados para MongoDB nem teste de restauração de backup. O provisionamento interativo precisa ser executado no ambiente de destino, com senha definida pelo administrador.
 
 A primeira execução remota encerrou no preparo do MongoDB 8.0 antes dos testes; CI ajustado para MongoDB 7.0, já validado localmente, e diagnóstico de logs adicionado. A configuração do MongoDB da VPS continua independente.
+
+## Container unificado
+
+O Dockerfile da raiz empacota o Angular no JAR Spring Boot. Testes de navegador usam agora a distribuição Angular de produção servida pelo Java, incluindo as URLs diretas e a política CSP. A API permanece autenticada; arquivos inexistentes não retornam o HTML da aplicação.

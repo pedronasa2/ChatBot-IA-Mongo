@@ -1,6 +1,7 @@
 # Usa imagens já compiladas pelo GitHub; não faz build na VPS.
 services:
   backend:
+    ports: ["127.0.0.1:${PANEL_PORT:-4208}:8080"]
     image: ghcr.io/pedronasa2/chatbot-ia-mongo-backend:${IMAGE_TAG:-latest}
     environment:
       SPRING_PROFILES_ACTIVE: docker
@@ -8,11 +9,6 @@ services:
       COOKIE_SECURE: ${COOKIE_SECURE:-true}
       METRICS_INGESTION_TOKEN: ${METRICS_INGESTION_TOKEN:-}
       MODULES_INTEGRATION_TOKEN: ${MODULES_INTEGRATION_TOKEN:-}
-    restart: unless-stopped
-  frontend:
-    image: ghcr.io/pedronasa2/chatbot-ia-mongo-frontend:${IMAGE_TAG:-latest}
-    ports: ["127.0.0.1:${PANEL_PORT:-4208}:80"]
-    depends_on: [backend]
     restart: unless-stopped
   provision:
     profiles: [tools]

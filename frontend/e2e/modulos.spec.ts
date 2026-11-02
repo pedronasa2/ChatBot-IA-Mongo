@@ -81,7 +81,7 @@ test('permissões por empresa, URLs protegidas, CRUD e preservação ao desabili
     await page.getByLabel('Fim do atendimento', { exact: true }).fill('2026-10-20T11:00');
     await page.getByRole('button', { name: 'Salvar agendamento', exact: true }).click();
     await expect(page.getByRole('row').filter({ hasText: pessoa })).toBeVisible();
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
     await page.screenshot({ path: `test-results/${informacoes.project.name}-agenda.png`, fullPage: true });
     await configurar(admin, false, true);
     await page.goto(`/empresas/${empresa.id}/candidatos`);

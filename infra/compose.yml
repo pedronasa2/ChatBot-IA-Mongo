@@ -1,6 +1,7 @@
 services:
   backend:
-    build: ../backend
+    ports: ["127.0.0.1:${PANEL_PORT:-4208}:8080"]
+    build: ..
     environment:
       SPRING_PROFILES_ACTIVE: docker
       MONGODB_URI: ${MONGODB_URI:?Preencha MONGODB_URI com o banco dedicado MongoDB}
@@ -8,15 +9,9 @@ services:
       METRICS_INGESTION_TOKEN: ${METRICS_INGESTION_TOKEN:-}
       COOKIE_SECURE: ${COOKIE_SECURE:-true}
     restart: unless-stopped
-  frontend:
-    build: ../frontend
-    ports:
-      - "127.0.0.1:${PANEL_PORT:-4208}:80"
-    depends_on: [backend]
-    restart: unless-stopped
   provision:
     profiles: [tools]
-    build: ../backend
+    build: ..
     environment:
       MONGODB_URI: ${MONGODB_URI:?Preencha MONGODB_URI}
     stdin_open: true

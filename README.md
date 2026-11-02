@@ -24,7 +24,7 @@ Para outro servidor, defina `MONGODB_URI` no ambiente. O exemplo sem credenciais
 
 ## Containers e atualização
 
-Há duas imagens: backend Java e frontend Nginx/Angular. O banco é um serviço separado. Para construir localmente:
+A imagem unificada contém Angular compilado servido pelo Spring Boot na porta 8080. O banco é um serviço separado. Para construir localmente:
 
 ```bash
 cp infra/.env.example infra/.env
@@ -33,7 +33,7 @@ docker compose --env-file infra/.env -f infra/compose.yml up -d --build
 docker compose --env-file infra/.env -f infra/compose.yml run --rm provision
 ```
 
-O GitHub Actions em `.github/workflows/images.yml` testa o backend e o navegador, compila e publica imagens privadas no GHCR ao receber um push em `main`. Ambas recebem a mesma tag `sha-<commit>`; `latest` só é promovida depois que as duas imagens terminam. Pull requests somente testam, sem publicar.
+O GitHub Actions em `.github/workflows/images.yml` testa o backend e o navegador, compila e publica a imagem privada no GHCR ao receber um push em `main`. Ela recebe a tag `sha-<commit>`; `latest` só é promovida depois que a publicação termina. Pull requests somente testam, sem publicar.
 
 A VPS usa `infra/compose.images.yml` para baixar imagens prontas. O aplicativo não verifica o GitHub: o workflow pode avisar o EasyPanel por webhook após a publicação. Essa etapa exige cadastrar o secret `EASYPANEL_DEPLOY_URL` e a variável `EASYPANEL_AUTO_DEPLOY=true`, além do serviço e acesso ao registro privado no EasyPanel. Sem essa configuração, as imagens são publicadas, mas a VPS não muda. Veja [operação e atualização](docs/operations.md).
 

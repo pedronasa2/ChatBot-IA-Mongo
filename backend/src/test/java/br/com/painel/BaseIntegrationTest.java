@@ -77,6 +77,19 @@ class BaseIntegrationTest {
   }
 
   @Test
+  void paginasPublicasNaoLiberamApiPrivada() throws Exception {
+    mvc.perform(get("/")).andExpect(status().isOk()).andExpect(forwardedUrl("/index.html"));
+    mvc.perform(get("/empresas/" + own + "/candidatos"))
+        .andExpect(status().isOk())
+        .andExpect(forwardedUrl("/index.html"));
+    mvc.perform(get("/empresas/" + own + "/agenda"))
+        .andExpect(status().isOk())
+        .andExpect(forwardedUrl("/index.html"));
+    mvc.perform(get("/api/empresas")).andExpect(status().isUnauthorized());
+    mvc.perform(get("/inexistente.js")).andExpect(status().isNotFound());
+  }
+
+  @Test
   void transacaoDesfazAlteracaoEEventoSeFalhar() {
     assertThatThrownBy(
             () ->
