@@ -35,6 +35,7 @@ class BaseIntegrationTest {
   UUID user, own, other;
   Cookie session;
   @Autowired MongoIndexedSessionRepository sessions;
+  @Autowired org.mongodb.spring.session.AbstractMongoSessionConverter sessionConverter;
   @Autowired PlatformTransactionManager transactions;
   @Autowired ServicoRegistroMensagens registroMensagens;
 
@@ -74,6 +75,29 @@ class BaseIntegrationTest {
                 .getResponse()
                 .getCookie("SESSION");
     assertThat(session).isNotNull();
+  }
+
+  @Test
+  void sessaoPermanenteNaoFicaElegivelParaLimpezaTtl() throws Exception {
+    var permanente = sessions.createSession();
+    permanente.setAttribute("teste", "preservado");
+    sessions.save(permanente);
+    var documento = mongo.findById(permanente.getId(), Document.class, "sessions");
+    assertThat(documento).doesNotContainKey("expireAt");
+    // Reproduz o critério de remoção usado pelo índice TTL, sem aguardar seu ciclo.
+    mongo.remove(Query.query(Criteria.where("expireAt").lte(new Date())), "sessions");
+    assertThat(sessions.findById(permanente.getId()).<String>getAttribute("teste"))
+        .isEqualTo("preservado");
+    mvc.perform(get("/api/auth/me").cookie(session)).andExpect(status().isOk());
+
+    var temporaria = sessions.createSession();
+    temporaria.setMaxInactiveInterval(java.time.Duration.ofSeconds(60));
+    temporaria.setLastAccessedTime(Instant.now());
+    sessions.save(temporaria);
+    assertThat(mongo.findById(temporaria.getId(), Document.class, "sessions").getDate("expireAt"))
+        .isAfter(new Date());
+    sessions.deleteById(permanente.getId());
+    assertThat(sessions.findById(permanente.getId())).isNull();
   }
 
   @Test
@@ -192,6 +216,7 @@ class BaseIntegrationTest {
     persisted.setLastAccessedTime(Instant.parse("2000-01-01T00:00:00Z"));
     sessions.save(persisted);
     var repository = new MongoIndexedSessionRepository(mongo);
+    repository.setMongoSessionConverter(sessionConverter);
     repository.afterPropertiesSet();
     org.springframework.session.Session reloaded = repository.findById(id);
     assertThat(reloaded).isNotNull();

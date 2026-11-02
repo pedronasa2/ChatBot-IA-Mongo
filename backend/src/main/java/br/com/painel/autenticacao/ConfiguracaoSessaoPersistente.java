@@ -18,6 +18,31 @@ import org.springframework.web.filter.OncePerRequestFilter;
     maxInactiveIntervalInSeconds = -1)
 @Profile("!provision")
 public class ConfiguracaoSessaoPersistente {
+  /** A biblioteca grava expireAt no passado para intervalo negativo; o TTL apagaria a sessão. */
+  @Bean
+  org.mongodb.spring.session.AbstractMongoSessionConverter sessionConverter() {
+    return new org.mongodb.spring.session.JdkMongoSessionConverter(
+        java.time.Duration.ofSeconds(-1)) {
+      @Override
+      protected org.bson.Document convert(org.mongodb.spring.session.MongoSession session) {
+        var document = super.convert(session);
+        if (session.getMaxInactiveInterval().isNegative()) document.remove("expireAt");
+        return document;
+      }
+
+      @Override
+      protected org.mongodb.spring.session.MongoSession convert(org.bson.Document document) {
+        // O conversor exige uma data ao ler; sessões permanentes não têm data no Mongo.
+        var copy = new org.bson.Document(document);
+        if (!copy.containsKey("expireAt")) {
+          copy.put(
+              "expireAt", java.util.Date.from(java.time.Instant.parse("9999-12-31T00:00:00Z")));
+        }
+        return super.convert(copy);
+      }
+    };
+  }
+
   @Bean
   CookieSerializer persistentCookieSerializer(
       @Value("${server.servlet.session.cookie.secure:true}") boolean secure) {
