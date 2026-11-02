@@ -1,25 +1,41 @@
-# Operação — preparação para Easypanel/VPS
+# Containers, GitHub e EasyPanel
 
-O Compose entregue é de desenvolvimento. Seu build e execução em Docker ainda precisam ser verificados num host com Docker. Não foi feito deploy.
+## Caminho da atualização
 
-## Preparar produção
+1. Push na branch `main`.
+2. GitHub Actions executa testes em banco descartável e navegador.
+3. Dockerfiles compilam Java e Angular no runner do GitHub.
+4. GHCR recebe imagens backend/frontend com tag do commit.
+5. Depois que ambas estão disponíveis, o workflow promove `latest`.
+6. Se habilitado, chama o gatilho de deploy do EasyPanel. A VPS baixa as imagens e recria os serviços.
 
-1. Use serviços PostgreSQL 18.6 com volume persistente em `/var/lib/postgresql` (layout das imagens PostgreSQL 18), backend e frontend na mesma rede privada. Banco e backend não devem publicar portas públicas.
-2. Construa as imagens a partir deste código e lockfiles. Registre versões e digests das imagens; execute testes antes de promover.
-3. Cadastre `DATABASE_PASSWORD`, URL e usuário JDBC no gerenciador de segredos do Easypanel. Não acrescente segredos ao frontend ou à imagem.
-4. Direcione o domínio com HTTPS para o frontend. Defina `COOKIE_SECURE=true` no backend; confira pelo navegador cookie HttpOnly/Secure/SameSite e login/CSRF. Restrinja acesso à origem ao proxy confiável; não habilite confiança irrestrita em headers encaminhados.
-5. Faça provisionamento em terminal interativo na rede privada com profile `provision`, sem iniciar servidor web. Desative esse caminho operacional após criar o primeiro usuário. Não há senha fixa.
-6. As sessões ficam em `spring_session`/`spring_session_attributes` no PostgreSQL e não expiram por inatividade. Reiniciar o backend preserva o login. O botão Sair remove a sessão; inclua essas tabelas nos backups e mantenha acesso ao banco restrito. O cookie persistente é renovado durante o uso; retenção e limpeza de cookies são controladas pelo navegador.
-7. Configure monitoramento de falhas, espaço livre, latência e reinícios. Não registre corpo de login, cookies ou conteúdo de prompts. A API de login requer limitação de tentativas no proxy antes de exposição pública.
+A imagem não contém chave MongoDB, token n8n ou conta do painel. Compilar não depende do banco da VPS. O uso de Actions/Packages segue as cotas e cobrança da conta GitHub.
 
-## Backup e restauração
+## Implantação de imagens prontas
 
-- Agende `pg_dump -Fc` com credencial obtida de arquivo protegido ou gerenciador de segredos, evitando senha em argumentos e logs.
-- Envie backups criptografados para armazenamento fora da VPS, com retenção definida e alertas para falha. Backup no próprio volume não protege contra perda da VPS.
-- Teste periodicamente a restauração em banco descartável com `pg_restore --exit-on-error`; valide usuários, vínculos, configurações e histórico Flyway, além de login e gravação pelo painel restaurado.
-- Registre data, duração e resultado. Defina RPO/RTO a partir da frequência e tempo medidos; não foram medidos nesta entrega.
-- Não apague o volume para atualizar. Leia incompatibilidades antes de mudar a versão principal do PostgreSQL e teste migrações em uma cópia restaurada.
+Use `infra/compose.images.yml` como base. Cadastre acesso ao GHCR privado no host/EasyPanel com credencial somente de leitura dos pacotes. Configure `MONGODB_URI`, tokens de integração e `COOKIE_SECURE=true`. O frontend precisa alcançar o backend pelo nome `backend:8080` na rede do Compose. Ao usar serviços App separados, adapte esse destino e rede; não basta colar duas imagens isoladas.
 
-## Capacidade
+Publique o frontend por HTTPS. A porta 4208 do exemplo só escuta no loopback do host; o proxy do EasyPanel deve alcançar o serviço internamente. Banco e backend não precisam de domínio público. O MongoDB instalado no EasyPanel precisa de replica set; uma instalação standalone padrão deve ser preparada separadamente, com backup antes de qualquer mudança. Não foi alterada por esta implementação.
 
-Não há promessa de quantidade de clientes. Meça memória e CPU em repouso e sob carga representativa, pool/conexões PostgreSQL, latência p95/p99, espaço e duração de backup/restauração antes de dimensionar. Serviços reais n8n/Chatwoot serão avaliados na etapa C com os acessos autorizados. Transferência para humano, autenticação de webhook e deduplicação são requisitos antes de ativar o atendimento real.
+Para implantar manualmente, autentique o Docker no GHCR por entrada segura e execute:
+
+```bash
+docker compose --env-file infra/.env -f infra/compose.images.yml pull
+docker compose --env-file infra/.env -f infra/compose.images.yml up -d --no-build
+```
+
+Para a primeira inicialização, rode `run --rm provision` nesse mesmo Compose em terminal interativo. Cria o único superusuário. Não há senha fixa.
+
+## Atualização automática
+
+Depois de criar e validar o serviço, obtenha a Deployment Trigger URL no EasyPanel e cadastre-a no GitHub como secret `EASYPANEL_DEPLOY_URL`. Cadastre a variável de repositório `EASYPANEL_AUTO_DEPLOY=true`. O gatilho precisa implantar o conjunto backend/frontend usando as imagens publicadas. Não use o auto-deploy de código do GitHub em paralelo, pois ele pode disparar antes de as imagens terminarem.
+
+O workflow não cria o serviço nem autentica o EasyPanel no GHCR. Também não confirma que uma implantação iniciada pelo webhook terminou saudável: verifique logs e acesso após a primeira implantação. Se a instalação não oferecer gatilho para o conjunto Compose, será necessário adaptar a etapa para os gatilhos dos dois serviços.
+
+Para voltar uma versão, defina `IMAGE_TAG=sha-<commit-anterior>` e implante ambas com a mesma tag. Isso volta o código, não reverte dados. Alterações futuras de esquema precisam ser compatíveis com atualização e rollback.
+
+## Backup
+
+Use ferramentas oficiais `mongodump`/`mongorestore`, credenciais em arquivo protegido ou gerenciador de segredos, e destino criptografado fora da VPS. Obtenha snapshot consistente com a topologia e com as transações da aplicação; não trate dumps independentes durante gravações como uma cópia necessariamente consistente. Teste restauração em banco separado antes de depender do backup. Não remova volumes para atualizar.
+
+Referências: [GitHub: publicar imagens](https://docs.github.com/en/actions/tutorials/publish-packages/publish-docker-images), [EasyPanel: imagens e gatilho de deploy](https://easypanel.io/docs/services/app).

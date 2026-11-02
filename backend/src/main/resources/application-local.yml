@@ -1,12 +1,8 @@
-# Conexão ao PostgreSQL informado pelo usuário para execução pela IDE ou Maven.
+# Configuração local da variante MongoDB.
 # Variáveis de ambiente continuam tendo prioridade sobre os valores padrão.
 spring:
   config:
     import: optional:file:./config/integracao-local.properties,optional:file:./backend/config/integracao-local.properties,optional:file:./config/banco-local.properties,optional:file:./backend/config/banco-local.properties
-  datasource:
-    url: ${DATABASE_URL}
-    username: ${DATABASE_USER}
-    password: ${DATABASE_PASSWORD}
 server:
   port: ${SERVER_PORT:8087}
   servlet:

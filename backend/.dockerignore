@@ -1,3 +1,6 @@
 target
 *.log
 .env*
+config/
+**/integracao-local.properties
+**/banco-local.properties

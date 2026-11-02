@@ -12,7 +12,7 @@ Mesmo domínio do painel. Autenticação em sessão; todas as mutações requere
 | GET / PUT | /api/empresas/{uuid} | dados do negócio |
 | GET / PUT | /api/empresas/{uuid}/rascunho | rascunho do bot |
 
-Depois de login e logout, obtenha novo token CSRF. Cookie SESSION é persistente, HttpOnly, SameSite=Lax e Secure em produção; é renovado em cada acesso autenticado. Sessões JDBC têm intervalo negativo, sem expiração por inatividade; logout elimina a sessão e impede reutilizar o cookie. A credencial do login nunca é devolvida. Sem vínculo (ou usuário desativado), consultas e gravações por empresa retornam 404. Não há API de gestão de membros nesta etapa; proprietário e editor podem editar os mesmos campos.
+Depois de login e logout, obtenha novo token CSRF. Cookie SESSION é persistente, HttpOnly, SameSite=Lax e Secure em produção; é renovado em cada acesso autenticado. Sessões MongoDB têm intervalo negativo, sem expiração por inatividade; logout elimina a sessão e impede reutilizar o cookie. A credencial do login nunca é devolvida. Sem vínculo (ou usuário desativado), consultas e gravações por empresa retornam 404. Não há API de gestão de membros nesta etapa; proprietário e editor podem editar os mesmos campos.
 
 PUT do negócio requer `nome`, `descricao`, `endereco`, `contato`, `site`, `servicos`, `fusoHorario`, `revisao`. Site vazio é permitido; preenchido exige URL HTTP/HTTPS sem credenciais. Fuso precisa existir em `ZoneId`. PUT de rascunho requer `nomeBot`, `tomVoz` (`cordial`, `formal`, `descontraido`), `usarEmojis`, `instrucoes`, `instrucoesTransferencia`, `revisao`. Campos adicionais do cliente não alteram IDs, empresa, estado, autor ou bot ativo. A revisão é obtida no GET; tentativa de gravar revisão obsoleta retorna 409.
 
@@ -23,3 +23,5 @@ A API interna `/internal/bot-context/resolve` será definida e implementada na e
 Erros tratados pela API usam o atributo JSON `mensagem`. Os estados do bot são `rascunho` e `publicado`; o papel de proprietário usa `proprietario`.
 
 O painel do desenvolvedor e a API de eventos estão documentados em [superusuario.md](superusuario.md). Permissão de superusuário é independente dos vínculos de empresa.
+
+Módulos por empresa, rotas protegidas e integração n8n: [modulos-empresa.md](modulos-empresa.md).

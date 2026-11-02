@@ -1,38 +1,15 @@
-# Tabelas do banco
+# Persistência MongoDB
 
-Banco da aplicação: `postgres` no servidor `189.126.111.15:5432`.
+Configure `spring.mongodb.uri` por `MONGODB_URI`. Use banco exclusivo e UUID no formato standard. Não reutilize o banco de n8n ou Chatwoot. IDs continuam UUID no JSON e UUID binário subtipo 4 no MongoDB. Datas são BSON Date; DTOs mantêm ISO-8601. Campos persistidos usam snake_case.
 
-| Tabela | Finalidade |
-| --- | --- |
-| `usuarios` | Contas autorizadas a acessar o painel |
-| `empresas` | Informações dos negócios atendidos |
-| `vinculos_usuarios_empresas` | Acesso e papel de cada usuário por empresa |
-| `versoes_configuracoes_bot` | Rascunhos e versões publicadas das configurações do bot |
-| `eventos_auditoria` | Histórico de ações nas configurações |
-| `spring_session` | Sessões persistentes gerenciadas pelo Spring Session |
-| `spring_session_attributes` | Atributos das sessões persistentes |
-| `flyway_schema_history` | Histórico técnico das migrações do Flyway |
+Coleções: `usuarios`, `empresas`, `vinculos_usuarios_empresas`, `versoes_configuracoes_bot`, `eventos_auditoria`, `configuracoes_globais`, `historico_prompts_globais`, `eventos_mensagens_atendimento`, `candidatos`, `agendamentos_atendimento`, `provisionamento`, além da coleção técnica do MongoDB Spring Session.
 
-A migração V3 renomeia as cinco tabelas de negócio e adiciona descrições no catálogo PostgreSQL. Colunas, dados e relacionamentos são preservados. As tabelas técnicas mantêm os nomes padrão de suas ferramentas. Migrações V1 e V2 permanecem intactas para preservar seus checksums.
+`ConfiguracaoMongo` cria coleções e índices idempotentes na inicialização. Há unicidade para e-mail, um único superusuário, vínculo usuário/empresa, versão do bot por empresa, um rascunho por empresa, revisão global e evento de origem. MongoDB não oferece foreign keys: referências e acesso por empresa são validados nos serviços. Exclusão de empresas/usuários não foi implementada; scripts externos não devem apagar referências diretamente.
 
-Reinicie o backend com o código atualizado após aplicar V3. Backup anterior à alteração: `infra/backups/2026-10-06-transfer/before-table-renames.dump`.
+Atualizações usam revisão otimista e retornam conflito quando a versão está obsoleta. Configuração e auditoria, prompt e histórico, provisionamento e operações de módulos usam transações MongoDB. É obrigatório replica set ou cluster com suporte a transações. O acesso aos módulos usa uma escrita na empresa na mesma transação, para conflitar com desativação concorrente. Isso serializa operações por empresa e deve ser medido sob carga.
 
-## Atributos e colunas de negócio
+Sessões são persistidas pelo pacote oficial `mongodb-spring-session`, sem expiração por inatividade, preservando o comportamento anterior. Logout invalida a sessão. Inclua sessões nos backups e proteja o banco.
 
-As entidades Java são `Empresa` e `ConfiguracaoBot`, nos pacotes `empresas` e `configuracoes`. Controladores, repositórios, classes de autenticação e formulários Angular usam nomes em português. Os atributos JSON seguem camelCase; as colunas PostgreSQL seguem snake_case.
+A aplicação inicia sem dados de produção. O provisionamento cria administrador e empresa inicial. Não há importador PostgreSQL nesta entrega. Migrações SQL antigas ficam fora dos recursos executáveis, em `docs/legado-postgres`.
 
-| Entidade/tabela | Atributos ou colunas |
-| --- | --- |
-| `Empresa` / `empresas` | `nome`, `descricao`, `endereco`, `contato`, `site`, `servicos`, `fusoHorario` → `fuso_horario`, `botAtivo` → `bot_ativo`, `revisao` |
-| `ConfiguracaoBot` / `versoes_configuracoes_bot` | `empresaId` → `empresa_id`, `versao`, `estado`, `nomeBot` → `nome_bot`, `tomVoz` → `tom_voz`, `usarEmojis` → `usar_emojis`, `instrucoes`, `instrucoesTransferencia` → `instrucoes_transferencia`, `autorId` → `autor_id`, `publicadoEm` → `publicado_em`, `revisao` |
-| `usuarios` | `id`, `email`, `hash_senha`, `ativo`, `criado_em`, `atualizado_em` |
-| `vinculos_usuarios_empresas` | `id`, `usuario_id`, `empresa_id`, `papel`, `criado_em`, `atualizado_em` |
-| `eventos_auditoria` | `id`, `empresa_id`, `usuario_responsavel_id`, `configuracao_bot_id`, `acao`, `criado_em` |
-
-Datas comuns às entidades usam `criadoEm`/`criado_em` e `atualizadoEm`/`atualizado_em`. Estados: `rascunho`, `publicado`. Papéis: `proprietario`, `editor`. A migração V4 renomeia colunas e converte esses valores sem recriar registros. A senha continua armazenada como hash BCrypt.
-
-Rotas do negócio: `/api/empresas` e `/api/empresas/{id}/rascunho`. Login recebe `email` e `senha`. Nomes exigidos por bibliotecas (JPA, Spring, Angular, Spring Session e Flyway) mantêm seus contratos técnicos. A classe principal para execução pela IDE agora é `br.com.painel.Aplicacao`.
-
-## Administração e métricas
-
-A migração V5 adiciona `usuarios.superusuario`, com limite de um superusuário, e as tabelas `configuracoes_globais`, `historico_prompts_globais` e `eventos_mensagens_atendimento`. A configuração global é única; cada alteração gera uma versão com autoria. Eventos guardam empresa, origem, ID estável, direção, resultado e datas; `origem` + `id_evento_origem` impedem duplicação. Conteúdo das mensagens não é armazenado.
+As consultas de texto usam regex literal sem diferenciar maiúsculas/minúsculas. Não são busca semântica ou full-text. Métricas agregam contagens por janela e empresa; avaliar custo para bases grandes antes de dimensionar.

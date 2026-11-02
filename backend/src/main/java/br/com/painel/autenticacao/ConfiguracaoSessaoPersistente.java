@@ -14,6 +14,8 @@ import org.springframework.session.web.http.DefaultCookieSerializer;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 @Configuration
+@org.mongodb.spring.session.config.annotation.web.http.EnableMongoHttpSession(
+    maxInactiveIntervalInSeconds = -1)
 @Profile("!provision")
 public class ConfiguracaoSessaoPersistente {
   @Bean

@@ -1,5 +1,20 @@
-# Publica o PostgreSQL somente no loopback para desenvolvimento fora do Docker.
+# Somente desenvolvimento local. MongoDB sem autenticação, acessível só via loopback.
 services:
-  postgres:
-    ports:
-      - "127.0.0.1:${POSTGRES_PORT:-5433}:5432"
+  mongo:
+    image: ${MONGO_IMAGE:-mongo:8.0}
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
+    ports: ["127.0.0.1:27027:27017"]
+    volumes: ["mongo_data:/data/db"]
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand({ping:1})"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+  mongo-init:
+    image: ${MONGO_IMAGE:-mongo:8.0}
+    depends_on:
+      mongo:
+        condition: service_healthy
+    entrypoint: ["mongosh", "--host", "mongo:27017", "--quiet", "--eval", "try { rs.status() } catch(e) { rs.initiate({_id:'rs0',members:[{_id:0,host:'mongo:27017'}]}) }"]
+volumes:
+  mongo_data:

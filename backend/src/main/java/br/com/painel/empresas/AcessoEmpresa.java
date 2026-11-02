@@ -1,39 +1,61 @@
 package br.com.painel.empresas;
 
+import static br.com.painel.persistencia.Documentos.q;
+
+import br.com.painel.persistencia.Documentos;
 import java.util.*;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.mongodb.core.query.*;
 import org.springframework.http.HttpStatus;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;
 
 @Component
 public class AcessoEmpresa {
-  private final JdbcTemplate jdbc;
+  private final Documentos db;
 
-  public AcessoEmpresa(JdbcTemplate jdbc) {
-    this.jdbc = jdbc;
+  public AcessoEmpresa(Documentos db) {
+    this.db = db;
   }
 
   public UUID exigirVinculo(UUID empresa, String email) {
-    var ids =
-        jdbc.query(
-            "select u.id from usuarios u where u.email=? and u.ativo=true"
-                + " and exists(select 1 from empresas c where c.id=? and (u.superusuario"
-                + " or exists(select 1 from vinculos_usuarios_empresas m where m.usuario_id=u.id and m.empresa_id=c.id)))",
-            (r, n) -> r.getObject(1, UUID.class),
-            email,
-            empresa);
-    if (ids.isEmpty())
+    var u = db.um("usuarios", q("email", email).addCriteria(Criteria.where("ativo").is(true)));
+    if (u == null
+        || db.um("empresas", q("_id", empresa)) == null
+        || (!u.getBoolean("superusuario", false)
+            && db.um(
+                    "vinculos_usuarios_empresas",
+                    q("usuario_id", u.get("_id"))
+                        .addCriteria(Criteria.where("empresa_id").is(empresa)))
+                == null))
       throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Empresa não encontrada");
-    return ids.getFirst();
+    return u.get("_id", UUID.class);
   }
 
   public List<Map<String, Object>> listar(String email) {
-    return jdbc.queryForList(
-        "select c.id,c.nome,case when u.superusuario then 'superusuario' else m.papel end as papel"
-            + " from usuarios u cross join empresas c left join vinculos_usuarios_empresas m"
-            + " on m.empresa_id=c.id and m.usuario_id=u.id"
-            + " where u.email=? and u.ativo=true and (u.superusuario or m.id is not null) order by c.nome,c.id",
-        email);
+    var u = db.um("usuarios", q("email", email).addCriteria(Criteria.where("ativo").is(true)));
+    if (u == null) return List.of();
+    var vinculos = db.lista("vinculos_usuarios_empresas", q("usuario_id", u.get("_id")));
+    Query consulta = new Query();
+    if (!u.getBoolean("superusuario", false))
+      consulta.addCriteria(
+          Criteria.where("_id").in(vinculos.stream().map(v -> v.get("empresa_id")).toList()));
+    return db.lista("empresas", consulta.with(Sort.by("nome", "_id"))).stream()
+        .map(
+            e ->
+                Map.<String, Object>of(
+                    "id",
+                    e.get("_id"),
+                    "nome",
+                    e.getString("nome"),
+                    "papel",
+                    u.getBoolean("superusuario", false)
+                        ? "superusuario"
+                        : vinculos.stream()
+                            .filter(v -> v.get("empresa_id").equals(e.get("_id")))
+                            .findFirst()
+                            .orElseThrow()
+                            .getString("papel")))
+        .toList();
   }
 }

@@ -1,11 +1,11 @@
 package br.com.painel.empresas;
 
-import jakarta.persistence.*;
 import java.time.Instant;
 import java.util.UUID;
+import org.springframework.data.annotation.*;
+import org.springframework.data.mongodb.core.mapping.*;
 
-@Entity
-@Table(name = "empresas")
+@Document(collection = "empresas")
 public class Empresa {
   @Id public UUID id;
   public String nome;
@@ -15,19 +15,25 @@ public class Empresa {
   public String site;
   public String servicos;
 
-  @Column(name = "fuso_horario")
+  @Field("fuso_horario")
   public String fusoHorario;
 
-  @Column(name = "bot_ativo")
+  @Field("bot_ativo")
   public boolean botAtivo;
 
-  @Version public long revisao;
+  @Field("modulo_candidatos_habilitado")
+  public boolean moduloCandidatosHabilitado;
 
-  @Column(name = "criado_em")
+  @Field("modulo_agenda_habilitado")
+  public boolean moduloAgendaHabilitado;
+
+  @Version public Long revisao = 0L;
+
+  @Field("criado_em")
   public Instant criadoEm;
 
-  @Column(name = "atualizado_em")
+  @Field("atualizado_em")
   public Instant atualizadoEm;
 
-  protected Empresa() {}
+  public Empresa() {}
 }

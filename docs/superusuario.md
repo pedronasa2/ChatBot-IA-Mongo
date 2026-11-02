@@ -1,6 +1,6 @@
 # Painel do desenvolvedor
 
-O login continua sendo o mesmo. O menu **Superusuário** fica disponível apenas para `pedronasa2@gmail.com`, com permissão independente dos vínculos com empresas. A API confere a permissão atual no banco a cada acesso; uma sessão persistente não conserva uma permissão revogada. Não existe tela ou endpoint para uma empresa conceder esse acesso. O índice `um_superusuario_do_sistema` permite apenas um usuário marcado como superusuário.
+O login continua sendo o mesmo. O menu **Superusuário** fica disponível para o usuário criado no provisionamento inicial, com permissão independente dos vínculos com empresas. A API confere a permissão atual no banco a cada acesso; uma sessão persistente não conserva uma permissão revogada. Não existe tela ou endpoint para uma empresa conceder esse acesso. O índice parcial único de superusuário permite apenas um usuário marcado como superusuário.
 
 ## Prompt global
 
@@ -41,13 +41,13 @@ No nó HTTP Request:
 
 Substitua os valores pelos dados do seu fluxo. O ID deve usar o identificador estável retornado pelo provedor, e a data deve representar o envio, não uma nova data gerada a cada tentativa de registrar a métrica. Se o provedor não devolver ID, crie um identificador lógico de envio antes de enviar e conserve-o nas repetições. Não use apenas o ID da execução do n8n: uma reexecução pode produzir outro ID e contar novamente o mesmo envio.
 
-A combinação `origem` + `idEventoOrigem` é única no PostgreSQL. Um evento novo responde `201` com `registrado=true`; repetições respondem `200` com `registrado=false`. Não é necessário buscar um contador e somar 1: o backend grava o evento uma vez e calcula as métricas pelos registros e pelas datas. Para o mesmo envio, sucesso e falha são eventos diferentes, por isso o exemplo inclui direção e resultado no identificador.
+A combinação `origem` + `idEventoOrigem` é única no MongoDB. Um evento novo responde `201` com `registrado=true`; repetições respondem `200` com `registrado=false`. Não é necessário buscar um contador e somar 1: o backend grava o evento uma vez e calcula as métricas pelos registros e pelas datas. Para o mesmo envio, sucesso e falha são eventos diferentes, por isso o exemplo inclui direção e resultado no identificador.
 
 Se o nó de métricas falhar, tente novamente **apenas o registro da métrica**, mantendo o mesmo ID e a mesma data. Não repita o nó de envio só para tentar atualizar o contador, pois isso pode mandar a mensagem de novo. O registro reflete a confirmação do provedor; confirmação de entrega/leitura é outra métrica, ainda não implementada.
 
-O token está em `backend/config/integracao-local.properties`, ignorado pelo Git, e em `infra/.env` para execução pelo script/Compose. Em outros ambientes, configure `METRICS_INGESTION_TOKEN`. O token permite somente registrar eventos: não autentica no painel e não permite ler ou alterar o prompt. Sem token configurado, a coleta fica desabilitada. A API armazena metadados do evento, sem conteúdo da conversa.
+O token deve ser configurado no ambiente; não há token de integração incluído no projeto. Em outros ambientes, configure `METRICS_INGESTION_TOKEN`. O token permite somente registrar eventos: não autentica no painel e não permite ler ou alterar o prompt. Sem token configurado, a coleta fica desabilitada. A API armazena metadados do evento, sem conteúdo da conversa.
 
-A URL é a do **backend**, não a do PostgreSQL. Para testar nesta máquina, use `http://127.0.0.1:8087`. Se o n8n estiver em outro servidor, esse endereço aponta para o próprio servidor do n8n: o backend precisa de uma URL acessível a ele, preferencialmente HTTPS. O backend local não foi publicado nesta entrega.
+A URL é a do **backend**, não a do MongoDB. Para testar nesta máquina, use `http://127.0.0.1:8087`. Se o n8n estiver em outro servidor, esse endereço aponta para o próprio servidor do n8n: o backend precisa de uma URL acessível a ele, preferencialmente HTTPS. O backend local não foi publicado nesta entrega.
 
 Referências oficiais: [nó HTTP Request](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/) e [credenciais HTTP Request](https://docs.n8n.io/integrations/builtin/credentials/httprequest/).
 

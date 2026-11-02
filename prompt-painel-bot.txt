@@ -1,3 +1,5 @@
+VARIANTE MONGODB: este repositório substitui PostgreSQL/JPA/Flyway por MongoDB/Spring Data MongoDB e MongoDB Spring Session. Exige replica set para transações. As instruções antigas sobre SQL abaixo são referência histórica; README e docs/database.md descrevem a implementação atual.
+
 PROMPT DE IMPLEMENTAÇÃO — PAINEL DE CONFIGURAÇÃO DE BOTS
 
 OBJETIVO

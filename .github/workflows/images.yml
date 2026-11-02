@@ -1,0 +1,103 @@
+name: Testar e publicar containers
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: containers-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  tests:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '26'
+          cache: maven
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26.10.0'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: MongoDB isolado com replica set
+        run: bash infra/start-mongo-local.sh
+      - name: Backend
+        working-directory: backend
+        run: mvn -B verify
+      - name: Frontend
+        working-directory: frontend
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+          npx playwright install --with-deps chromium
+      - name: Navegador desktop e celular
+        run: bash infra/test-browser.sh
+      - name: Encerrar banco descartável
+        if: always()
+        run: docker compose -p chatbot-mongo-local -f infra/compose.local.yml down -v
+  images:
+    needs: tests
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        component: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Nome da imagem em minúsculas
+        id: image
+        shell: bash
+        run: echo "name=ghcr.io/${GITHUB_REPOSITORY,,}-${COMPONENT}" >> "$GITHUB_OUTPUT"
+        env:
+          COMPONENT: ${{ matrix.component }}
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: ./${{ matrix.component }}
+          push: true
+          tags: ${{ steps.image.outputs.name }}:sha-${{ github.sha }}
+          labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
+          cache-from: type=gha,scope=${{ matrix.component }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.component }}
+  release:
+    needs: images
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Promover o par de imagens aprovado
+        shell: bash
+        run: |
+          for component in backend frontend; do
+            image="ghcr.io/${GITHUB_REPOSITORY,,}-${component}"
+            docker buildx imagetools create --tag "$image:latest" "$image:sha-$GITHUB_SHA"
+          done
+      - name: Avisar o EasyPanel após publicar ambas as imagens
+        if: vars.EASYPANEL_AUTO_DEPLOY == 'true'
+        env:
+          DEPLOY_URL: ${{ secrets.EASYPANEL_DEPLOY_URL }}
+        shell: bash
+        run: |
+          test -n "$DEPLOY_URL" || { echo 'Cadastre EASYPANEL_DEPLOY_URL nos secrets.'; exit 1; }
+          curl --fail --silent --show-error --output /dev/null --connect-timeout 15 --max-time 60 "$DEPLOY_URL"

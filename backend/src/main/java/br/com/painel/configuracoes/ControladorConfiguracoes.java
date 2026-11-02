@@ -1,13 +1,13 @@
 package br.com.painel.configuracoes;
 
 import br.com.painel.empresas.*;
+import br.com.painel.persistencia.Documentos;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import java.security.Principal;
 import java.time.*;
 import java.util.*;
 import org.springframework.http.HttpStatus;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
@@ -18,14 +18,14 @@ public class ControladorConfiguracoes {
   private final AcessoEmpresa acesso;
   private final RepositorioEmpresa empresas;
   private final RepositorioConfiguracaoBot configuracoesBot;
-  private final JdbcTemplate jdbc;
+  private final Documentos documentos;
 
   public ControladorConfiguracoes(
-      AcessoEmpresa a, RepositorioEmpresa c, RepositorioConfiguracaoBot d, JdbcTemplate j) {
+      AcessoEmpresa a, RepositorioEmpresa c, RepositorioConfiguracaoBot d, Documentos j) {
     acesso = a;
     empresas = c;
     configuracoesBot = d;
-    jdbc = j;
+    documentos = j;
   }
 
   public record DadosEmpresa(
@@ -91,7 +91,7 @@ public class ControladorConfiguracoes {
     c.servicos = b.servicos();
     c.fusoHorario = b.fusoHorario();
     c.atualizadoEm = Instant.now();
-    empresas.saveAndFlush(c);
+    empresas.save(c);
     registrarAuditoria(id, usuarioResponsavelId, null, "dados_empresa_salvos");
     return c;
   }
@@ -108,7 +108,8 @@ public class ControladorConfiguracoes {
 
   @PutMapping("/{id}/rascunho")
   @Transactional
-  public ConfiguracaoBot salvarRascunho(@PathVariable UUID id, @Valid @RequestBody DadosRascunhoBot b, Principal p) {
+  public ConfiguracaoBot salvarRascunho(
+      @PathVariable UUID id, @Valid @RequestBody DadosRascunhoBot b, Principal p) {
     UUID usuarioResponsavelId = acesso.exigirVinculo(id, p.getName());
     ConfiguracaoBot d = configuracoesBot.findByEmpresaIdAndEstado(id, "rascunho").orElseThrow();
     if (d.revisao != b.revisao())
@@ -121,19 +122,12 @@ public class ControladorConfiguracoes {
     d.instrucoesTransferencia = b.instrucoesTransferencia();
     d.autorId = usuarioResponsavelId;
     d.atualizadoEm = Instant.now();
-    configuracoesBot.saveAndFlush(d);
+    configuracoesBot.save(d);
     registrarAuditoria(id, usuarioResponsavelId, d.id, "rascunho_salvo");
     return d;
   }
 
   private void registrarAuditoria(UUID c, UUID a, UUID d, String acao) {
-    jdbc.update(
-        "insert into eventos_auditoria(id,empresa_id,usuario_responsavel_id,configuracao_bot_id,acao)"
-            + " values(?,?,?,?,?)",
-        UUID.randomUUID(),
-        c,
-        a,
-        d,
-        acao);
+    documentos.auditar(c, a, d, acao);
   }
 }

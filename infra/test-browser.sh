@@ -9,6 +9,7 @@ backend_port="${E2E_BACKEND_PORT:-8087}"
 frontend_port="${E2E_FRONTEND_PORT:-4207}"
 export E2E_BASE_URL="http://127.0.0.1:$frontend_port"
 export E2E_BACKEND_PORT="$backend_port"
+export E2E_MODULES_TOKEN="${E2E_MODULES_TOKEN:-modules-only-browser-tests}"
 export E2E_METRICS_TOKEN="${E2E_METRICS_TOKEN:-metrics-only-browser-tests}"
 [[ "$backend_port" =~ ^[0-9]+$ && "$frontend_port" =~ ^[0-9]+$ ]] || exit 1
 printf '{"/api":{"target":"http://127.0.0.1:%s","secure":false}}' "$backend_port" > "$test_dir/proxy.json"

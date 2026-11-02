@@ -1,8 +1,8 @@
 package br.com.painel;
 
 import java.util.Map;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.*;
-import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
@@ -24,7 +24,7 @@ public class ErrosApi {
         .body(Map.of("mensagem", "Revise os campos obrigatórios e os limites de tamanho."));
   }
 
-  @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+  @ExceptionHandler(OptimisticLockingFailureException.class)
   ResponseEntity<?> conflict() {
     return ResponseEntity.status(409)
         .body(Map.of("mensagem", "Dados alterados em outra sessão. Recarregue antes de salvar."));

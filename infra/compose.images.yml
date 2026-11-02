@@ -1,0 +1,24 @@
+# Usa imagens já compiladas pelo GitHub; não faz build na VPS.
+services:
+  backend:
+    image: ghcr.io/pedronasa2/chatbot-ia-mongo-backend:${IMAGE_TAG:-latest}
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      MONGODB_URI: ${MONGODB_URI:?Defina a URI de um MongoDB replica set dedicado}
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      METRICS_INGESTION_TOKEN: ${METRICS_INGESTION_TOKEN:-}
+      MODULES_INTEGRATION_TOKEN: ${MODULES_INTEGRATION_TOKEN:-}
+    restart: unless-stopped
+  frontend:
+    image: ghcr.io/pedronasa2/chatbot-ia-mongo-frontend:${IMAGE_TAG:-latest}
+    ports: ["127.0.0.1:${PANEL_PORT:-4208}:80"]
+    depends_on: [backend]
+    restart: unless-stopped
+  provision:
+    profiles: [tools]
+    image: ghcr.io/pedronasa2/chatbot-ia-mongo-backend:${IMAGE_TAG:-latest}
+    environment:
+      MONGODB_URI: ${MONGODB_URI:?Defina MONGODB_URI}
+    stdin_open: true
+    tty: true
+    command: ["--spring.profiles.active=provision", "--spring.main.web-application-type=none"]

@@ -2,7 +2,7 @@
 set -euo pipefail
 project_root="$(cd "$(dirname "$0")/.." && pwd)"
 set -a
-source "$project_root/infra/.env"
+if [[ -f "$project_root/infra/.env" ]]; then source "$project_root/infra/.env"; fi
 set +a
 cd "$project_root/backend"
 if [[ "${1:-}" == provision ]]; then

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Instala Docker pelo repositório oficial stable e sobe apenas o PostgreSQL.
+# Instala Docker pelo repositório oficial stable e sobe apenas o MongoDB.
 set -euo pipefail
 if [[ "$EUID" -ne 0 ]]; then
   echo 'Execute: sudo bash infra/install-docker-local.sh' >&2
@@ -32,4 +32,4 @@ fi
 systemctl start docker
 docker version
 docker compose version
-bash "$infra_dir/start-postgres-local.sh"
+bash "$infra_dir/start-mongo-local.sh"

@@ -18,18 +18,12 @@ import { MatProgressBarModule } from "@angular/material/progress-bar";
 import { UiIconComponent } from "./ui-icon";
 import { MatRadioModule } from "@angular/material/radio";
 import { ComponentePainelSuperusuario } from "./painel-superusuario";
-interface Empresa {
-  id: string;
-  nome: string;
-  descricao: string;
-  endereco: string;
-  contato: string;
-  site: string;
-  servicos: string;
-  fusoHorario: string;
-  revisao: number;
-  botAtivo: boolean;
-}
+import { Empresa, ModuloEmpresa } from './modelos-empresa';
+import { ServicoAcessoModulos } from './acesso-modulos';
+import { EstadoEdicaoModulo } from './estado-edicao-modulo';
+import { Router, RouterOutlet, NavigationEnd } from '@angular/router';
+import { DestroyRef, effect, untracked } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 interface RascunhoBot {
   nomeBot: string;
   tomVoz: string;
@@ -49,6 +43,7 @@ interface RascunhoBot {
   ],
   imports: [
     UiIconComponent,
+    RouterOutlet,
     ComponentePainelSuperusuario,
     MatRadioModule,
     ReactiveFormsModule,
@@ -62,6 +57,12 @@ interface RascunhoBot {
   templateUrl: "./app.html",
 })
 export class ComponenteAplicacao {
+  private readonly router = inject(Router);
+  private readonly destruidor = inject(DestroyRef);
+  private readonly acessoModulos = inject(ServicoAcessoModulos);
+  private readonly edicaoModulo = inject(EstadoEdicaoModulo);
+  readonly empresaRota = signal('');
+  private consultandoPermissoes = false;
   private http = inject(HttpClient);
   private fb = inject(FormBuilder);
   private csrf: { token: string; headerName: string } | null = null;
@@ -98,6 +99,10 @@ export class ComponenteAplicacao {
     ],
     revisao: [0],
   });
+  readonly modulosEmpresa = this.fb.nonNullable.group({
+    moduloCandidatosHabilitado: [false], moduloAgendaHabilitado: [false], revisao: [0],
+  });
+  readonly salvandoModulos = signal(false);
   readonly bot = this.fb.nonNullable.group({
     nomeBot: ["", [Validators.required, Validators.maxLength(80)]],
     tomVoz: ["cordial", Validators.required],
@@ -107,7 +112,91 @@ export class ComponenteAplicacao {
     revisao: [0],
   });
   constructor() {
+    effect(() => {
+      const verificada = this.acessoModulos.empresaVerificada();
+      if (verificada) untracked(() => {
+        if (this.empresaSelecionada() === verificada.id && this.empresa()) {
+          this.empresa.set(verificada);
+          if (!this.dadosEmpresa.dirty) this.dadosEmpresa.reset(verificada);
+          if (!this.modulosEmpresa.dirty) this.modulosEmpresa.reset(verificada);
+        }
+      });
+    });
+    effect(() => {
+      if (this.acessoModulos.sessaoEncerrada()) {
+        this.acessoModulos.sessaoEncerrada.set(false);
+        void this.tratarFalha(new HttpErrorResponse({ status: 401 }));
+      }
+      const negacao = this.acessoModulos.negacao();
+      if (negacao) {
+        this.erro.set(negacao);
+        untracked(() => void this.atualizarPermissoesEmpresa());
+      }
+    });
+    this.router.events.pipe(takeUntilDestroyed(this.destruidor)).subscribe(evento => {
+      if (!(evento instanceof NavigationEnd)) return;
+      const rota = this.moduloNaUrl();
+      this.empresaRota.set(rota?.empresaId || '');
+      if (rota) {
+        this.aba.set(rota.modulo);
+        if (this.autenticado() && this.empresaSelecionada() !== rota.empresaId) void this.carregarEmpresa(rota.empresaId);
+      } else if (this.aba() === 'candidatos' || this.aba() === 'agenda') this.aba.set('overview');
+    });
+    const intervalo = setInterval(() => { if (!document.hidden) void this.atualizarPermissoesEmpresa(); }, 15000);
+    this.destruidor.onDestroy(() => clearInterval(intervalo));
     void this.inicializar();
+  }
+  private moduloNaUrl() {
+    const resultado = this.router.url.match(/^\/empresas\/([^/]+)\/(candidatos|agenda)(?:[?#]|$)/);
+    return resultado ? { empresaId: resultado[1], modulo: resultado[2] as ModuloEmpresa } : null;
+  }
+  abrirModulo(modulo: ModuloEmpresa) {
+    if (this.temAlteracoes() && !window.confirm('Há alterações não salvas. Deseja descartá-las?')) return;
+    void this.router.navigate(['/empresas', this.empresaSelecionada(), modulo]);
+  }
+  @HostListener('window:focus') aoRetornarParaJanela() { void this.atualizarPermissoesEmpresa(); }
+  async atualizarPermissoesEmpresa() {
+    if (!this.autenticado() || !this.empresa() || this.consultandoPermissoes || this.carregando()) return;
+    const id = this.empresaSelecionada();
+    this.consultandoPermissoes = true;
+    try {
+      const atual = await firstValueFrom(this.http.get<Empresa>(`/api/empresas/${id}`));
+      if (id !== this.empresaSelecionada()) return;
+      this.empresa.set(atual);
+      if (!this.dadosEmpresa.dirty) this.dadosEmpresa.reset(atual);
+      if (!this.modulosEmpresa.dirty) this.modulosEmpresa.reset(atual);
+      if ((this.aba() === 'candidatos' && !atual.moduloCandidatosHabilitado)
+          || (this.aba() === 'agenda' && !atual.moduloAgendaHabilitado)) {
+        this.erro.set('Este módulo foi desabilitado para a empresa. Os registros foram preservados.');
+        void this.router.navigateByUrl('/');
+      }
+    } catch (erro) {
+      if (erro instanceof HttpErrorResponse && (erro.status === 401 || erro.status === 404)) {
+        this.empresa.set(null);
+        void this.router.navigateByUrl('/');
+        await this.tratarFalha(erro);
+      }
+    } finally { this.consultandoPermissoes = false; }
+  }
+  async salvarPermissoesModulos() {
+    if (!this.superusuario() || this.salvandoModulos() || !this.modulosEmpresa.dirty) return;
+    const id = this.empresaSelecionada();
+    const dados = this.modulosEmpresa.getRawValue();
+    this.modulosEmpresa.disable({ emitEvent: false });
+    this.salvandoModulos.set(true);
+    this.erro.set(''); this.sucesso.set('');
+    try {
+      await this.renovarCsrf();
+      if (id !== this.empresaSelecionada()) return;
+      const empresa = await firstValueFrom(this.http.put<Empresa>(`/api/superusuario/empresas/${id}/modulos`,
+        dados, { headers: this.cabecalhos() }));
+      if (id !== this.empresaSelecionada()) return;
+      this.empresa.set(empresa);
+      this.modulosEmpresa.reset(empresa);
+      this.dadosEmpresa.controls.revisao.setValue(empresa.revisao);
+      this.sucesso.set('Permissões dos módulos salvas para esta empresa.');
+    } catch (erro) { await this.tratarFalha(erro); }
+    finally { this.modulosEmpresa.enable({ emitEvent: false }); this.salvandoModulos.set(false); }
   }
   private async inicializar() {
     try {
@@ -188,7 +277,8 @@ export class ComponenteAplicacao {
           ),
         ),
       );
-      const first = this.empresas()[0];
+      const solicitada = this.moduloNaUrl()?.empresaId;
+      const first = this.empresas().find(empresa => empresa.id === solicitada) || this.empresas()[0];
       if (first) await this.carregarEmpresa(first.id);
     } catch (e) {
       this.tratarFalha(e);
@@ -209,6 +299,12 @@ export class ComponenteAplicacao {
       ]);
       if (this.empresaSelecionada() !== id) return;
       this.empresa.set(c);
+      this.modulosEmpresa.reset(c);
+      const rota = this.moduloNaUrl();
+      if (rota && rota.empresaId !== id) {
+        const habilitado = rota.modulo === 'candidatos' ? c.moduloCandidatosHabilitado : c.moduloAgendaHabilitado;
+        void this.router.navigateByUrl(habilitado ? `/empresas/${id}/${rota.modulo}` : '/');
+      }
       this.dadosEmpresa.reset(c);
       this.bot.reset(d);
     } catch (e) {
@@ -218,11 +314,11 @@ export class ComponenteAplicacao {
     }
   }
   temAlteracoes() {
-    return this.dadosEmpresa.dirty || this.bot.dirty || this.promptGlobalPendente();
+    return this.dadosEmpresa.dirty || this.bot.dirty || this.promptGlobalPendente() || this.modulosEmpresa.dirty || this.edicaoModulo.pendente();
   }
   trocarEmpresa(id: string) {
     if (
-      (this.dadosEmpresa.dirty || this.bot.dirty) &&
+      (this.dadosEmpresa.dirty || this.bot.dirty || this.modulosEmpresa.dirty || this.edicaoModulo.pendente()) &&
       !window.confirm("Há alterações não salvas. Deseja descartá-las?")
     )
       return;
@@ -233,6 +329,8 @@ export class ComponenteAplicacao {
     if (this.aba() === "superusuario" && aba !== "superusuario" && this.promptGlobalPendente()
         && !window.confirm("O prompt global tem alterações não salvas. Deseja descartá-las?")) return;
     if (aba !== "superusuario") this.promptGlobalPendente.set(false);
+    if (this.edicaoModulo.pendente() && !window.confirm('Há alterações não salvas neste registro. Deseja descartá-las?')) return;
+    void this.router.navigateByUrl('/').then(() => this.aba.set(aba));
     this.aba.set(aba);
     this.sucesso.set("");
     this.erro.set("");
@@ -245,6 +343,7 @@ export class ComponenteAplicacao {
       return;
     }
     if (this.processando()) return;
+    const id = this.empresaSelecionada();
     this.processando.set(true);
     this.erro.set("");
     this.sucesso.set("");
@@ -252,24 +351,28 @@ export class ComponenteAplicacao {
       if (kind === "dadosEmpresa") {
         const c = await firstValueFrom(
           this.http.put<Empresa>(
-            `/api/empresas/${this.empresaSelecionada()}`,
+            `/api/empresas/${id}`,
             this.dadosEmpresa.getRawValue(),
             { headers: this.cabecalhos() },
           ),
         );
+        if (id !== this.empresaSelecionada()) return;
         this.empresa.set(c);
         this.dadosEmpresa.reset(c);
+        if (this.modulosEmpresa.dirty) this.modulosEmpresa.controls.revisao.setValue(c.revisao);
+        else this.modulosEmpresa.reset(c);
         this.empresas.update((list) =>
           list.map((x) => (x.id === c.id ? { ...x, nome: c.nome } : x)),
         );
       } else {
         const d = await firstValueFrom(
           this.http.put<RascunhoBot>(
-            `/api/empresas/${this.empresaSelecionada()}/rascunho`,
+            `/api/empresas/${id}/rascunho`,
             this.bot.getRawValue(),
             { headers: this.cabecalhos() },
           ),
         );
+        if (id !== this.empresaSelecionada()) return;
         this.bot.reset(d);
       }
       this.sucesso.set("Alterações salvas no rascunho.");
@@ -300,12 +403,15 @@ export class ComponenteAplicacao {
     }
   }
   private limparSessao() {
+    void this.router.navigateByUrl('/');
     this.autenticado.set(false);
     this.superusuario.set(false);
     this.promptGlobalPendente.set(false);
     this.aba.set("overview");
     this.empresa.set(null);
     this.empresas.set([]);
+    this.modulosEmpresa.reset();
+    this.edicaoModulo.pendente.set(false);
     this.dadosEmpresa.reset();
     this.bot.reset();
   }

@@ -1,25 +1,29 @@
 package br.com.painel.autenticacao;
 
+import br.com.painel.persistencia.Documentos;
 import java.util.*;
+import org.bson.Document;
 import org.springframework.boot.*;
 import org.springframework.context.annotation.Profile;
-import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.core.annotation.Order;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
 
 @Component
+@Order(org.springframework.core.Ordered.LOWEST_PRECEDENCE)
 @Profile("provision")
 public class ComandoProvisionamento implements ApplicationRunner {
-  private final JdbcTemplate jdbc;
+  private final Documentos documentos;
   private final PasswordEncoder encoder;
   private final TransactionTemplate tx;
 
   public ComandoProvisionamento(
-      JdbcTemplate j,
+      Documentos j,
       PasswordEncoder e,
       org.springframework.transaction.PlatformTransactionManager m) {
-    jdbc = j;
+    documentos = j;
     encoder = e;
     tx = new TransactionTemplate(m);
   }
@@ -47,28 +51,57 @@ public class ComandoProvisionamento implements ApplicationRunner {
       UUID u = UUID.randomUUID(), c = UUID.randomUUID();
       tx.executeWithoutResult(
           s -> {
-            jdbc.execute("LOCK TABLE usuarios IN EXCLUSIVE MODE");
-            if (jdbc.queryForObject("select count(*) from usuarios", Long.class) != 0)
+            documentos.inserir("provisionamento", new Document("_id", "inicial"));
+            if (documentos.contar("usuarios", new Query()) != 0)
               throw new IllegalStateException("Provisionamento inicial já realizado.");
-            jdbc.update("insert into usuarios(id,email,hash_senha) values(?,?,?)", u, email, hash);
-            jdbc.update("insert into empresas(id,nome) values(?,?)", c, nome);
-            jdbc.update(
-                "insert into vinculos_usuarios_empresas(id,usuario_id,empresa_id,papel) values(?,?,?,'proprietario')",
-                UUID.randomUUID(),
-                u,
-                c);
-            jdbc.update(
-                "insert into versoes_configuracoes_bot(id,empresa_id,versao,estado,autor_id)"
-                    + " values(?,?,1,'rascunho',?)",
-                UUID.randomUUID(),
-                c,
-                u);
-            jdbc.update(
-                "insert into eventos_auditoria(id,empresa_id,usuario_responsavel_id,acao)"
-                    + " values(?,?,?,'provisionamento_inicial')",
-                UUID.randomUUID(),
-                c,
-                u);
+            var agora = new Date();
+            documentos.inserir(
+                "usuarios",
+                new Document("_id", u)
+                    .append("email", email)
+                    .append("hash_senha", hash)
+                    .append("ativo", true)
+                    .append("superusuario", true)
+                    .append("criado_em", agora)
+                    .append("atualizado_em", agora));
+            documentos.inserir(
+                "empresas",
+                new Document("_id", c)
+                    .append("nome", nome)
+                    .append("descricao", "")
+                    .append("endereco", "")
+                    .append("contato", "")
+                    .append("site", "")
+                    .append("servicos", "")
+                    .append("fuso_horario", "America/Sao_Paulo")
+                    .append("bot_ativo", false)
+                    .append("modulo_candidatos_habilitado", false)
+                    .append("modulo_agenda_habilitado", false)
+                    .append("revisao", 0L)
+                    .append("criado_em", agora)
+                    .append("atualizado_em", agora));
+            documentos.inserir(
+                "vinculos_usuarios_empresas",
+                new Document("_id", UUID.randomUUID())
+                    .append("usuario_id", u)
+                    .append("empresa_id", c)
+                    .append("papel", "proprietario"));
+            documentos.inserir(
+                "versoes_configuracoes_bot",
+                new Document("_id", UUID.randomUUID())
+                    .append("empresa_id", c)
+                    .append("versao", 1)
+                    .append("estado", "rascunho")
+                    .append("autor_id", u)
+                    .append("nome_bot", "Assistente")
+                    .append("tom_voz", "cordial")
+                    .append("usar_emojis", false)
+                    .append("instrucoes", "")
+                    .append("instrucoes_transferencia", "")
+                    .append("revisao", 0L)
+                    .append("criado_em", agora)
+                    .append("atualizado_em", agora));
+            documentos.auditar(c, u, null, "provisionamento_inicial");
           });
       console.printf("Usuário e empresa criados. Bot pausado, rascunho inicial disponível.%n");
     } finally {

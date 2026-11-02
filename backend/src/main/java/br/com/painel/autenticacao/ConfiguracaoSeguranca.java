@@ -1,7 +1,9 @@
 package br.com.painel.autenticacao;
 
+import static br.com.painel.persistencia.Documentos.q;
+
+import br.com.painel.persistencia.Documentos;
 import org.springframework.context.annotation.*;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.userdetails.*;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -16,20 +18,15 @@ public class ConfiguracaoSeguranca {
   }
 
   @Bean
-  UserDetailsService users(JdbcTemplate jdbc) {
+  UserDetailsService users(Documentos db) {
     return email -> {
-      var listar =
-          jdbc.query(
-              "select email,hash_senha,ativo from usuarios where email=?",
-              (rs, n) ->
-                  User.withUsername(rs.getString(1))
-                      .password(rs.getString(2))
-                      .disabled(!rs.getBoolean(3))
-                      .roles("USER")
-                      .build(),
-              email.toLowerCase(java.util.Locale.ROOT));
-      if (listar.isEmpty()) throw new UsernameNotFoundException("Credenciais inválidas");
-      return listar.getFirst();
+      var u = db.um("usuarios", q("email", email.toLowerCase(java.util.Locale.ROOT)));
+      if (u == null) throw new UsernameNotFoundException("Credenciais inválidas");
+      return User.withUsername(u.getString("email"))
+          .password(u.getString("hash_senha"))
+          .disabled(!u.getBoolean("ativo", false))
+          .roles("USER")
+          .build();
     };
   }
 
@@ -38,11 +35,19 @@ public class ConfiguracaoSeguranca {
   SecurityFilterChain security(HttpSecurity http) throws Exception {
     http.authorizeHttpRequests(
             a ->
-                a.requestMatchers("/api/auth/csrf", "/api/auth/login", "/api/integracoes/mensagens", "/error")
+                a.requestMatchers(
+                        "/api/auth/csrf",
+                        "/api/auth/login",
+                        "/api/integracoes/mensagens",
+                        "/api/integracoes/empresas/**",
+                        "/error")
                     .permitAll()
                     .anyRequest()
                     .authenticated())
-        .csrf(c -> c.ignoringRequestMatchers("/api/integracoes/mensagens"))
+        .csrf(
+            c ->
+                c.ignoringRequestMatchers(
+                    "/api/integracoes/mensagens", "/api/integracoes/empresas/**"))
         .formLogin(
             f ->
                 f.loginProcessingUrl("/api/auth/login")

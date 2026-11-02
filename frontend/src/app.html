@@ -59,9 +59,11 @@
   </header>
   <aside class="sidebar">
     <p class="nav-label">ESPAÇO DE TRABALHO</p>
-    <nav aria-label="Navegação principal">
+    <nav aria-label="Navegação principal" [class.com-modulos]="empresa()?.moduloCandidatosHabilitado||empresa()?.moduloAgendaHabilitado">
       @for(item of [{id:'overview',label:'Visão geral',icon:'grid'},{id:'dadosEmpresa',label:superusuario()?'Negócios':'Meu negócio',icon:'building'},{id:'bot',label:'Bot',icon:'bot'}];track item.id){
       <button mat-button [class.active]="aba()===item.id" [attr.aria-current]="aba()===item.id?'page':null" (click)="trocarAba(item.id)"><ui-icon [name]="item.icon" />{{item.label}}</button>}
+      @if(empresa()?.moduloCandidatosHabilitado){<button mat-button [class.active]="aba()==='candidatos'" (click)="abrirModulo('candidatos')"><ui-icon name="person" />Banco de candidatos</button>}
+      @if(empresa()?.moduloAgendaHabilitado){<button mat-button [class.active]="aba()==='agenda'" (click)="abrirModulo('agenda')"><ui-icon name="clock" />Agenda de atendimentos</button>}
       @if(superusuario()){<button mat-button class="superusuario-nav" [class.active]="aba()==='superusuario'" [attr.aria-current]="aba()==='superusuario'?'page':null" (click)="trocarAba('superusuario')"><ui-icon name="shield" />Superusuário</button>}
     </nav>
     <div class="sidebar-note"><ui-icon name="shield"/><strong>Seu espaço de atendimento</strong><p>Informações do negócio e orientações do assistente, em um só lugar.</p><span class="badge draft"><i></i>Em configuração</span></div>
@@ -73,6 +75,7 @@
       @if(sucesso()){<p class="alert" role="status">{{sucesso()}}</p>}
       @if(!carregando()&&empresas().length===0&&!erro()&&aba()!=='superusuario'){<section class="panel"><h1>Nenhuma empresa disponível</h1><p>{{superusuario()?'Seu acesso administrativo está disponível no menu Superusuário.':'Peça ao administrador para vincular sua conta a uma empresa.'}}</p></section>}
       @if(aba()==='superusuario'&&superusuario()){<painel-superusuario (alteracoesPendentes)="promptGlobalPendente.set($event)" (sessaoIndisponivel)="revalidarAcessoSuperusuario()" />}
+      <div [hidden]="carregando()||((aba()==='candidatos'||aba()==='agenda')&&(!empresa()||empresa()?.id!==empresaRota()))"><router-outlet /></div>
       @if(!carregando()&&empresa()){
       @if(aba()==='overview'){
       <div class="overview-heading"><span class="eyebrow">VISÃO GERAL DO ATENDIMENTO</span><h1>Atendimento com a sua identidade</h1><p class="lead">Configure os dados e orientações do assistente.</p></div>
@@ -97,6 +100,14 @@
       </section>
       }
       <p class="lead">Mantenha os dados claros para orientar o atendimento.</p>
+      @if(superusuario()){
+        <form class="panel permissoes-modulos" [formGroup]="modulosEmpresa" (ngSubmit)="salvarPermissoesModulos()">
+          <div class="panel-heading"><ui-icon name="shield" /><div><h2>Módulos deste negócio</h2><p>Permissões compartilhadas por todos os usuários de {{empresa()!.nome}}.</p></div></div>
+          <div class="opcoes-modulos"><mat-checkbox formControlName="moduloCandidatosHabilitado">Habilitar banco de candidatos</mat-checkbox><mat-checkbox formControlName="moduloAgendaHabilitado">Habilitar agenda de atendimentos</mat-checkbox></div>
+          <p class="context-note">Cada módulo é independente. Desabilitar esconde o acesso e bloqueia as operações, mantendo os registros salvos.</p>
+          <button mat-flat-button type="submit" [disabled]="salvandoModulos()||!modulosEmpresa.dirty">{{salvandoModulos()?'Salvando…':'Salvar permissões dos módulos'}}</button>
+        </form>
+      }
       <div class="configuration-layout"><form
         class="panel editor"
         [formGroup]="dadosEmpresa"

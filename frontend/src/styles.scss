@@ -357,3 +357,34 @@ painel-superusuario { display:block; min-width:0; }
   .metricas-detalhes { gap:20px; }
   .tabela-metricas th,.tabela-metricas td { padding:12px 4px; font-size:11px; }
 }
+
+.permissoes-modulos { margin-bottom:24px; }
+.opcoes-modulos { display:flex; flex-wrap:wrap; gap:20px; margin-bottom:12px; }
+.modulo-heading { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; }
+.modulo-heading > button { flex-shrink:0; }
+.filtros-modulo { display:flex; align-items:center; flex-wrap:wrap; gap:16px; margin-bottom:20px; }
+.filtros-modulo mat-form-field { flex:1; min-width:170px; }
+.horario-modulo { font-size:12px; }
+.editor-modulo { margin-bottom:24px; }
+.editor-modulo .panel-heading { justify-content:space-between; }
+.formulario-modulo { display:grid; gap:20px; }
+.registros-modulo table { border-collapse:collapse; width:100%; font-size:12px; table-layout:fixed; }
+.registros-modulo th,.registros-modulo td { padding:14px 8px; text-align:left; border-bottom:1px solid #e4e9ed; overflow-wrap:anywhere; }
+.registros-modulo thead th { color:#647780; font-weight:500; }
+.registros-modulo .acoes-registro { width:130px; }
+.contato-registro { display:block; margin-top:6px; color:#647780; font-size:11px; font-weight:400; }
+.registro-arquivado { background:#f7f8fa; }
+.paginacao-modulo { display:flex; justify-content:flex-end; align-items:center; gap:12px; margin-top:16px; font-size:12px; }
+@media(max-width:700px) {
+  .sidebar nav.com-modulos { display:flex; overflow-x:auto; padding-bottom:3px; }
+  .sidebar nav.com-modulos button { width:auto; flex-shrink:0; }
+  .modulo-heading { flex-direction:column; margin-bottom:16px; }
+  .opcoes-modulos { flex-direction:column; gap:8px; }
+  .filtros-modulo { align-items:stretch; flex-direction:column; gap:12px; }
+  .registros-modulo table,.registros-modulo tbody,.registros-modulo tr,.registros-modulo th,.registros-modulo td { display:block; width:100%; box-sizing:border-box; }
+  .registros-modulo thead { display:none; }
+  .registros-modulo tbody tr { padding:12px 0; border-bottom:1px solid #e4e9ed; }
+  .registros-modulo th,.registros-modulo td { padding:6px 0; border:0; }
+  .registros-modulo td[data-label]::before { content:attr(data-label) ': '; color:#647780; }
+  .registros-modulo .acoes-registro { width:100%; }
+}
