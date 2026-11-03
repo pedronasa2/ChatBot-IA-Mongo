@@ -1,0 +1,19 @@
+<form class="panel permissoes-modulos" [formGroup]="modulosEmpresa" (ngSubmit)="salvar()">
+    <div class="panel-heading">
+        <ui-icon name="shield" />
+        <div>
+            <h2>Módulos deste negócio</h2>
+            <p>Permissões compartilhadas por todos os usuários de {{ empresa().nome }}.</p>
+        </div>
+    </div>
+    <div class="opcoes-modulos">
+        <mat-checkbox formControlName="moduloCandidatosHabilitado">Habilitar banco de candidatos</mat-checkbox
+        ><mat-checkbox formControlName="moduloAgendaHabilitado">Habilitar agenda de atendimentos</mat-checkbox>
+    </div>
+    <p class="context-note">
+        Cada módulo é independente. Desabilitar esconde o acesso e bloqueia as operações, mantendo os registros salvos.
+    </p>
+    <button mat-flat-button type="submit" [disabled]="processando() || !modulosEmpresa.dirty">
+        {{ processando() ? "Salvando…" : "Salvar permissões dos módulos" }}
+    </button>
+</form>

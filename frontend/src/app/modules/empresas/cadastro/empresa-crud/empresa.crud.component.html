@@ -1,0 +1,78 @@
+<div class="configuration-layout">
+    <form class="panel editor" [formGroup]="dadosEmpresa" (ngSubmit)="salvar()">
+        <div class="panel-heading">
+            <span class="section-icon"><ui-icon name="building" /></span>
+            <div>
+                <h2>Informações principais</h2>
+                <p>Os dados que orientam seu atendimento.</p>
+            </div>
+        </div>
+        <mat-form-field appearance="outline">
+            <mat-label>Nome comercial </mat-label>
+            <input matInput formControlName="nome" maxlength="160" />
+            <mat-error>Informe o nome comercial (até 160 caracteres). </mat-error>
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+            <mat-label>Descrição do negócio </mat-label>
+            <textarea matInput formControlName="descricao" rows="3" maxlength="5000"></textarea>
+            <mat-hint>Explique o que sua empresa faz e quem atende. </mat-hint>
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+            <mat-label>Endereço </mat-label>
+            <input matInput formControlName="endereco" maxlength="500"
+        /></mat-form-field>
+        <div class="field-grid">
+            <mat-form-field appearance="outline">
+                <mat-label>Contatos </mat-label>
+                <input matInput formControlName="contato" maxlength="300"
+            /></mat-form-field>
+            <mat-form-field appearance="outline">
+                <mat-label>Site </mat-label>
+                <input matInput formControlName="site" placeholder="https://suaempresa.com.br" maxlength="500" />
+                <mat-error>Use um endereço com http:// ou https://. </mat-error>
+            </mat-form-field>
+        </div>
+        <mat-form-field appearance="outline">
+            <mat-label>Serviços ou produtos </mat-label>
+            <textarea matInput formControlName="servicos" rows="4" maxlength="10000"></textarea>
+            <mat-hint>Descrição geral; este campo não controla estoque. </mat-hint>
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+            <mat-label>Fuso horário </mat-label>
+            <input matInput formControlName="fusoHorario" placeholder="America/Sao_Paulo" />
+            <mat-hint>Use um identificador de fuso, como America/Sao_Paulo. </mat-hint>
+            <mat-error>Informe um fuso horário válido.</mat-error>
+        </mat-form-field>
+        <div class="salvar-row">
+            <span class="muted" role="status">{{
+                dadosEmpresa.dirty ? "Há alterações não salvas." : "Dados salvos no rascunho."
+            }}</span>
+            <button mat-flat-button type="submit" [disabled]="processando() || !dadosEmpresa.dirty">
+                {{ processando() ? "Salvando…" : "Salvar informações" }}
+            </button>
+        </div>
+    </form>
+    <div class="context-column">
+        <section class="panel context-card">
+            <div class="panel-heading">
+                <ui-icon name="building" />
+                <h2>{{ superusuario() ? "Negócio selecionado" : "Seu negócio" }}</h2>
+            </div>
+            <div class="context-detail">
+                <span>Empresa selecionada</span><strong>{{ empresa().nome }}</strong>
+            </div>
+            <div class="context-detail">
+                <span>Fuso horário</span><strong>{{ empresa().fusoHorario }}</strong>
+            </div>
+            <span class="badge draft"><i></i>Configuração em rascunho</span>
+        </section>
+        <section class="panel context-card">
+            <div class="panel-heading">
+                <ui-icon name="shield" />
+                <h2>Dados da empresa</h2>
+            </div>
+            <p>As informações ficam disponíveis para os membros desta empresa e para o superusuário da plataforma.</p>
+            <p class="context-note">Descreva os serviços de forma clara e mantenha seus contatos atualizados.</p>
+        </section>
+    </div>
+</div>

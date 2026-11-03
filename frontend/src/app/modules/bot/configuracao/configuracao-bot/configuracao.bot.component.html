@@ -1,0 +1,110 @@
+<span class="eyebrow">IDENTIDADE DO ASSISTENTE</span>
+<h1>Seu jeito de conversar</h1>
+<p class="lead">Defina como o assistente apresenta sua empresa.</p>
+<div class="configuration-layout">
+    <form class="panel editor" [formGroup]="bot" (ngSubmit)="salvar()">
+        <div class="panel-heading">
+            <span class="section-icon"><ui-icon name="bot" /></span>
+            <div>
+                <h2>Atendimento automatizado</h2>
+                <p>Personalize a forma de conversar do assistente.</p>
+            </div>
+            <span class="badge paused"><i></i>Bot pausado</span>
+        </div>
+        <mat-form-field appearance="outline">
+            <mat-label>Nome de apresentação </mat-label>
+            <input matInput formControlName="nomeBot" maxlength="80" />
+            <mat-error>Informe um nome (até 80 caracteres). </mat-error>
+        </mat-form-field>
+        <section class="tomVoz-section">
+            <h3 id="tomVoz-label">Tom de voz</h3>
+            <p>Defina a personalidade das respostas do assistente.</p>
+            <mat-radio-group formControlName="tomVoz" aria-labelledby="tomVoz-label" class="tomVoz-options">
+                @for (
+                    tomVoz of [
+                        {
+                            value: "cordial",
+                            title: "Cordial",
+                            icon: "smile",
+                            descricao: "Gentil, próximo e acolhedor.",
+                        },
+                        {
+                            value: "formal",
+                            title: "Formal",
+                            icon: "building",
+                            descricao: "Profissional e organizado.",
+                        },
+                        {
+                            value: "descontraido",
+                            title: "Descontraído",
+                            icon: "chat",
+                            descricao: "Leve, natural e acessível.",
+                        },
+                    ];
+                    track tomVoz.value
+                ) {
+                    <mat-radio-button
+                        [value]="tomVoz.value"
+                        class="tomVoz-option"
+                        [class.empresaSelecionada]="bot.controls.tomVoz.value === tomVoz.value"
+                        ><span class="tomVoz-copy"
+                            ><ui-icon [name]="tomVoz.icon" /><strong>{{ tomVoz.title }}</strong
+                            ><span>{{ tomVoz.descricao }}</span></span
+                        >
+                    </mat-radio-button>
+                }
+            </mat-radio-group>
+        </section>
+        <mat-checkbox formControlName="usarEmojis">Permitir uso de emojis </mat-checkbox>
+        <mat-form-field appearance="outline">
+            <mat-label>Instruções adicionais </mat-label>
+            <textarea matInput formControlName="instrucoes" rows="5" maxlength="10000"></textarea>
+            <mat-hint>Informe preferências de atendimento e detalhes úteis. </mat-hint>
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+            <mat-label>Encaminhar para uma pessoa </mat-label>
+            <textarea matInput formControlName="instrucoesTransferencia" rows="3" maxlength="5000"></textarea>
+            <mat-hint>A transferência será implementada em uma etapa posterior. </mat-hint>
+        </mat-form-field>
+        <div class="salvar-row">
+            <span class="muted" role="status">{{
+                bot.dirty
+                    ? "Há alterações não salvas."
+                    : "Dados salvos no
+            rascunho."
+            }}</span>
+            <button mat-flat-button type="submit" [disabled]="processando() || !bot.dirty">
+                {{ processando() ? "Salvando…" : "Salvar rascunho" }}
+            </button>
+        </div>
+    </form>
+    <div class="context-column">
+        <section class="panel context-card">
+            <div class="panel-heading">
+                <ui-icon name="layers" />
+                <h2>Seu rascunho</h2>
+            </div>
+            <div class="context-detail">
+                <span>Nome de apresentação</span><strong>{{ bot.controls.nomeBot.value || "Defina um nome" }}</strong>
+            </div>
+            <div class="context-detail">
+                <span>Tom de voz</span
+                ><strong class="capitalize">{{
+                    bot.controls.tomVoz.value === "descontraido" ? "Descontraído" : bot.controls.tomVoz.value
+                }}</strong>
+            </div>
+            <div class="context-detail">
+                <span>Emojis</span><strong>{{ bot.controls.usarEmojis.value ? "Permitidos" : "Sem emojis" }}</strong>
+            </div>
+            <p class="context-note">Salve as alterações para continuar configurando depois.</p>
+        </section>
+        <section class="panel context-card">
+            <div class="panel-heading">
+                <ui-icon name="link" />
+                <h2>Estado da integração</h2>
+            </div>
+            <span class="badge draft"><i></i>Não verificada</span>
+            <p>n8n e Chatwoot ainda não configurados neste painel.</p>
+        </section>
+    </div>
+</div>

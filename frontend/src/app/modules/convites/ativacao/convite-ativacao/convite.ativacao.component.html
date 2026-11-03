@@ -1,0 +1,54 @@
+<main class="formularioLogin-layout">
+    <section class="intro">
+        <span class="brand">AtendeFlow</span>
+        <h1>Seu primeiro acesso.</h1>
+        <p>Defina sua senha para acessar a empresa que convidou você.</p>
+    </section>
+    <section class="formularioLogin-card">
+        <span class="eyebrow">ATIVAÇÃO DO ACESSO</span>
+        <h2>Crie sua senha</h2>
+        @if (concluido()) {
+            <p class="alert" role="status">Acesso ativado. Entre com seu e-mail e a senha que acabou de criar.</p>
+            <a mat-flat-button href="/">Ir para o login</a>
+        } @else {
+            <p>Informe o mesmo e-mail cadastrado pelo administrador.</p>
+            @if (erro()) {
+                <p class="alert erro" role="alert">{{ erro() }}</p>
+            }
+            <form [formGroup]="form" (ngSubmit)="ativar()">
+                <mat-form-field appearance="outline">
+                    <mat-label>E-mail do convite</mat-label>
+                    <input matInput type="email" formControlName="email" autocomplete="username" />
+                    <mat-error>Informe seu e-mail.</mat-error>
+                </mat-form-field>
+                <mat-form-field appearance="outline">
+                    <mat-label>Nova senha</mat-label>
+                    <input
+                        matInput
+                        type="password"
+                        formControlName="senha"
+                        autocomplete="new-password"
+                        minlength="6"
+                        maxlength="21"
+                    />
+                    <mat-hint>Use de 6 a 21 caracteres.</mat-hint>
+                    <mat-error>Use entre 6 e 21 caracteres.</mat-error>
+                </mat-form-field>
+                <mat-form-field appearance="outline">
+                    <mat-label>Confirmar nova senha</mat-label>
+                    <input
+                        matInput
+                        type="password"
+                        formControlName="confirmacaoSenha"
+                        autocomplete="new-password"
+                        minlength="6"
+                        maxlength="21"
+                /></mat-form-field>
+                <button mat-flat-button type="submit" [disabled]="ocupado() || form.invalid">
+                    {{ ocupado() ? "Ativando…" : "Criar senha e ativar acesso" }}
+                </button>
+            </form>
+            <p class="small muted">O convite vence em 48 horas. Se expirou, peça um novo link ao administrador.</p>
+        }
+    </section>
+</main>

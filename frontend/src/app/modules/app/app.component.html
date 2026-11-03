@@ -1,0 +1,269 @@
+@if (tokenConvite) {
+    <ativar-convite [token]="tokenConvite" />
+} @else if (!pronto()) {
+    <main class="startup">
+        <p>Carregando o painel…</p>
+        <mat-progress-bar mode="indeterminate" />
+    </main>
+} @else if (!autenticado()) {
+    <login-page [mensagem]="erro()" [sucesso]="sucesso()" (entrou)="aposLogin()" />
+} @else {
+    <div class="shell" [class.overview-shell]="aba() === 'overview'" [class.com-superusuario]="superusuario()">
+        <header class="app-header">
+            <a class="brand" href="/"
+                ><span class="brand-mark"><ui-icon name="chat" /></span>AtendeFlow</a
+            >
+            @if (superusuario()) {
+                <div class="empresa-control">
+                    <ui-icon name="building" />
+                    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                        <mat-label>Empresa</mat-label>
+                        <mat-select
+                            [value]="empresaSelecionada()"
+                            [disabled]="
+                                processando() || carregando() || salvandoEmpresa() || salvandoBot() || salvandoModulos()
+                            "
+                            (selectionChange)="trocarEmpresa($event.value, $event.source)"
+                        >
+                            @for (c of empresas(); track c.id) {
+                                <mat-option [value]="c.id">{{ c.nome }}</mat-option>
+                            }
+                        </mat-select>
+                    </mat-form-field>
+                </div>
+            }
+            <span class="badge integration-badge"><i></i>Integração não verificada</span>
+            <div class="header-account">
+                <span class="avatar">{{ email().charAt(0).toUpperCase() }}</span>
+                <div>
+                    <strong>{{ email() }}</strong
+                    ><span>{{ superusuario() ? "Desenvolvedor do sistema" : "Minha conta" }}</span>
+                </div>
+            </div>
+            <button
+                mat-button
+                (click)="sair()"
+                [disabled]="processando() || salvandoEmpresa() || salvandoBot() || salvandoModulos()"
+                class="logout-button"
+            >
+                <ui-icon name="logout" />
+                Sair
+            </button>
+        </header>
+        <aside class="sidebar">
+            <p class="nav-label">ESPAÇO DE TRABALHO</p>
+            <nav
+                aria-label="Navegação principal"
+                [class.com-modulos]="empresa()?.moduloCandidatosHabilitado || empresa()?.moduloAgendaHabilitado"
+            >
+                @for (
+                    item of [
+                        { id: "overview", label: "Visão geral", icon: "grid" },
+                        {
+                            id: "dadosEmpresa",
+                            label: superusuario() ? "Negócios" : "Meu negócio",
+                            icon: "building",
+                        },
+                        { id: "bot", label: "Bot", icon: "bot" },
+                    ];
+                    track item.id
+                ) {
+                    <button
+                        mat-button
+                        [class.active]="aba() === item.id"
+                        [attr.aria-current]="aba() === item.id ? 'page' : null"
+                        (click)="trocarAba(item.id)"
+                    >
+                        <ui-icon [name]="item.icon" />
+                        {{ item.label }}
+                    </button>
+                }
+                @if (empresa()?.moduloCandidatosHabilitado) {
+                    <button mat-button [class.active]="aba() === 'candidatos'" (click)="abrirModulo('candidatos')">
+                        <ui-icon name="person" />
+                        Banco de candidatos
+                    </button>
+                }
+                @if (empresa()?.moduloAgendaHabilitado) {
+                    <button mat-button [class.active]="aba() === 'agenda'" (click)="abrirModulo('agenda')">
+                        <ui-icon name="clock" />
+                        Agenda de atendimentos
+                    </button>
+                }
+                @if (superusuario()) {
+                    <button
+                        mat-button
+                        class="superusuario-nav"
+                        [class.active]="aba() === 'superusuario'"
+                        [attr.aria-current]="aba() === 'superusuario' ? 'page' : null"
+                        (click)="trocarAba('superusuario')"
+                    >
+                        <ui-icon name="shield" />
+                        Superusuário
+                    </button>
+                }
+            </nav>
+            <div class="sidebar-note">
+                <ui-icon name="shield" />
+                <strong>Seu espaço de atendimento</strong>
+                <p>Informações do negócio e orientações do assistente, em um só lugar.</p>
+                <span class="badge draft"><i></i>Em configuração</span>
+            </div>
+        </aside>
+        <div class="workspace">
+            <main [class.overview]="aba() === 'overview'">
+                @if (carregando()) {
+                    <mat-progress-bar mode="indeterminate" />
+                    <p>Carregando informações…</p>
+                }
+                @if (erro()) {
+                    <p class="alert erro" role="alert">{{ erro() }}</p>
+                    <button
+                        mat-button
+                        (click)="carregarEmpresas()"
+                        [disabled]="processando() || carregando() || temAlteracoes()"
+                    >
+                        Tentar carregar novamente
+                    </button>
+                }
+                @if (sucesso()) {
+                    <p class="alert" role="status">{{ sucesso() }}</p>
+                }
+                @if (!carregando() && empresas().length === 0 && !erro() && aba() !== "superusuario") {
+                    <section class="panel">
+                        <h1>Nenhuma empresa disponível</h1>
+                        <p>
+                            {{
+                                superusuario()
+                                    ? "Seu acesso administrativo está disponível no menu Superusuário."
+                                    : "Peça ao administrador para vincular sua conta a uma empresa."
+                            }}
+                        </p>
+                    </section>
+                }
+                @if (aba() === "superusuario" && superusuario()) {
+                    <painel-superusuario
+                        (alteracoesPendentes)="promptGlobalPendente.set($event)"
+                        (sessaoIndisponivel)="revalidarAcessoSuperusuario()"
+                    />
+                }
+                <div
+                    [hidden]="
+                        carregando() ||
+                        ((aba() === 'candidatos' || aba() === 'agenda') &&
+                            (!empresa() || empresa()?.id !== empresaRota()))
+                    "
+                >
+                    <router-outlet />
+                </div>
+                @if (aba() === "dadosEmpresa" && superusuario()) {
+                    <cadastro-negocio
+                        [hidden]="aba() !== 'dadosEmpresa'"
+                        [empresaId]="empresaSelecionada()"
+                        (criada)="empresaCriada($event)"
+                    />
+                    @if (empresaSelecionada()) {
+                        <vinculo-chatwoot
+                            [hidden]="aba() !== 'dadosEmpresa'"
+                            [empresaId]="empresaSelecionada()"
+                            (salvo)="atualizarPermissoesEmpresa()"
+                        />
+                    }
+                }
+                @if (!carregando() && empresa()) {
+                    @if (aba() === "overview") {
+                        <div class="overview-heading">
+                            <span class="eyebrow">VISÃO GERAL DO ATENDIMENTO</span>
+                            <h1>Atendimento com a sua identidade</h1>
+                            <p class="lead">Configure os dados e orientações do assistente.</p>
+                        </div>
+                        <div class="cards">
+                            <section class="panel overview-bot">
+                                <div class="card-heading">
+                                    <span class="section-icon"><ui-icon name="bot" /></span>
+                                    <h2>Prepare seu atendimento</h2>
+                                    <span class="badge paused"><i></i>Bot pausado</span>
+                                </div>
+                                <p>O bot permanece pausado. Suas configurações são salvas como rascunho.</p>
+                                <button mat-flat-button (click)="trocarAba('dadosEmpresa')">
+                                    {{ superusuario() ? "Gerenciar negócios" : "Configurar meu negócio" }}
+                                    <ui-icon name="arrow" />
+                                </button>
+                            </section>
+                            <section class="panel estado-card">
+                                <div class="estado-label">
+                                    <span class="eyebrow">PUBLICAÇÃO</span
+                                    ><span class="estado-icon"><ui-icon name="layers" /></span>
+                                </div>
+                                <h2>Nenhuma versão publicada</h2>
+                                <p>Teste e publicação após concluir a configuração.</p>
+                            </section>
+                            <section class="panel estado-card">
+                                <div class="estado-label">
+                                    <span class="eyebrow">INTEGRAÇÃO</span
+                                    ><span class="estado-icon"><ui-icon name="link" /></span>
+                                </div>
+                                <h2>Integração não verificada</h2>
+                                <p>n8n e Chatwoot ainda não configurados.</p>
+                            </section>
+                        </div>
+                        <section class="panel next">
+                            <div class="next-heading">
+                                <ui-icon name="layers" />
+                                <h2>Comece pelo essencial</h2>
+                                <span class="badge draft">3 passos</span>
+                            </div>
+                            <ol class="setup-steps">
+                                <li><span>1</span>Informe os dados da empresa.</li>
+                                <li><span>2</span>Defina o nome e o tom do assistente.</li>
+                                <li><span>3</span>Salve o rascunho para continuar.</li>
+                            </ol>
+                        </section>
+                    }
+                    <section [hidden]="aba() !== 'dadosEmpresa'">
+                        <span class="eyebrow">CONHECIMENTO DO NEGÓCIO</span>
+
+                        <p class="lead">Mantenha os dados claros para orientar o atendimento.</p>
+                        @if (superusuario()) {
+                            <permissoes-editor
+                                [empresa]="empresa()!"
+                                (pendente)="permissoesPendentes.set($event)"
+                                (ocupado)="salvandoModulos.set($event)"
+                                (salvo)="permissoesSalvas($event)"
+                                (falha)="tratarFalha($event)"
+                            />
+                        }
+                        <empresas-editor
+                            [empresa]="empresa()!"
+                            [superusuario]="superusuario()"
+                            (pendente)="empresaPendente.set($event)"
+                            (ocupado)="salvandoEmpresa.set($event)"
+                            (salvo)="empresaSalva($event)"
+                            (falha)="tratarFalha($event)"
+                        />
+                    </section>
+                    @if (rascunho()) {
+                        <bot-editor
+                            [hidden]="aba() !== 'bot'"
+                            [empresaId]="empresaSelecionada()"
+                            [snapshot]="rascunho()!"
+                            (pendente)="botPendente.set($event)"
+                            (ocupado)="salvandoBot.set($event)"
+                            (salvo)="botSalvo($event)"
+                            (falha)="tratarFalha($event)"
+                        />
+                    }
+                }
+            </main>
+        </div>
+        <footer class="app-footer">
+            <div>
+                <span class="footer-estado"><i></i>Bot pausado</span
+                ><span class="footer-draft">Configuração em rascunho</span>
+            </div>
+            <span class="footer-fusoHorario"
+                ><ui-icon name="clock" /> {{ empresa()?.fusoHorario || "Fuso da empresa" }}</span
+            ><span class="footer-brand">AtendeFlow · Painel de atendimento</span>
+        </footer>
+    </div>
+}

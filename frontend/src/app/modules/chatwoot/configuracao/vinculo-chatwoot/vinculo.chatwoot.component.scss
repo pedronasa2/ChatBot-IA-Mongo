@@ -1,0 +1,7 @@
+@use "../../../ui/styles/convite";
+:host {
+    display: block;
+}
+:host([hidden]) {
+    display: none;
+}

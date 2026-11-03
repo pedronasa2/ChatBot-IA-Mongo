@@ -2,8 +2,10 @@
 !Dockerfile
 !backend
 !backend/pom.xml
-!backend/src
-!backend/src/**
+!backend/chatbot-*
+!backend/chatbot-*/pom.xml
+!backend/chatbot-*/src
+!backend/chatbot-*/src/**
 !frontend
 !frontend/package.json
 !frontend/package-lock.json

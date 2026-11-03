@@ -1,0 +1,20 @@
+.convite-panel {
+    margin-bottom: 24px;
+}
+.convite-form {
+    display: grid;
+    gap: 18px;
+    max-width: 680px;
+}
+.convite-panel .panel-heading {
+    flex-wrap: wrap;
+    gap: 16px;
+}
+.convite-panel mat-form-field {
+    width: 100%;
+    min-width: 0;
+}
+.convite-situacao {
+    margin-top: 20px;
+    overflow-wrap: anywhere;
+}

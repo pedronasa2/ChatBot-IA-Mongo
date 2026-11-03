@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 project_root="$(cd "$(dirname "$0")/.." && pwd)"
+source "$project_root/infra/java25.sh"
 test_dir=$(mktemp -d)
 export E2E_CREDENTIAL_FILE="$test_dir/credential"
 backend_pid=''
@@ -15,11 +16,17 @@ cleanup() {
   rm -rf "$test_dir"
 }
 trap cleanup EXIT
-mkdir -p "$project_root/backend/target/classes/static"
-cp -a "$project_root/frontend/dist/painel/browser/." "$project_root/backend/target/classes/static/"
+test_server=br.com.painel.BrowserTestServer
+if [[ -n "${E2E_IMAGE:-}" ]]; then
+  test_server=br.com.painel.BrowserContainerTestServer
+else
+  mkdir -p "$project_root/backend/chatbot-boot/target/classes/static"
+  cp -a "$project_root/frontend/dist/painel/browser/." "$project_root/backend/chatbot-boot/target/classes/static/"
+fi
 cd "$project_root/backend"
 mvn -q test-compile org.apache.maven.plugins:maven-dependency-plugin:3.9.0:build-classpath -Dmdep.outputFile=target/test-classpath -Dmdep.includeScope=test
-java -cp "target/classes:target/test-classes:$(cat target/test-classpath)" br.com.painel.BrowserTestServer > "$test_dir/backend.log" 2>&1 &
+cd chatbot-boot
+java -cp "target/classes:target/test-classes:$(cat target/test-classpath)" "$test_server" > "$test_dir/backend.log" 2>&1 &
 backend_pid=$!
 cd "$project_root/frontend"
 for attempt in $(seq 1 90); do
@@ -31,4 +38,4 @@ for attempt in $(seq 1 90); do
   sleep 1
 done
 [[ -s "$E2E_CREDENTIAL_FILE" ]] || { echo 'O servidor de teste não ficou pronto.'; exit 1; }
-npm run test:e2e
+npm run test:e2e -- "$@"

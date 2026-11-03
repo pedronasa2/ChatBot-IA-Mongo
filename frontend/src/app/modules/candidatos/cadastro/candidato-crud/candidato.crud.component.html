@@ -1,0 +1,168 @@
+<div class="modulo-heading">
+    <div>
+        <span class="eyebrow">DADOS DA EMPRESA</span>
+        <h1>{{ "Banco de candidatos" }}</h1>
+        <p class="lead">{{ "Consulte currículos e acompanhe as candidaturas." }}</p>
+    </div>
+    <button mat-flat-button (click)="novo()" [disabled]="salvando()">{{ "Novo candidato" }}</button>
+</div>
+@if (erro()) {
+    <p class="alert erro" role="alert">{{ erro() }}</p>
+}
+@if (sucesso()) {
+    <p class="alert" role="status">{{ sucesso() }}</p>
+}
+<form class="panel filtros-modulo" [formGroup]="filtros" (ngSubmit)="carregar()">
+    <mat-form-field appearance="outline"
+        ><mat-label>Buscar registros</mat-label
+        ><input matInput formControlName="busca" maxlength="160" [placeholder]="'Nome, e-mail ou cargo'"
+    /></mat-form-field>
+
+    <mat-checkbox formControlName="incluirArquivados">Incluir arquivados</mat-checkbox
+    ><button mat-stroked-button type="submit" [disabled]="carregando()">Buscar</button>
+</form>
+
+@if (formularioAberto()) {
+    <section class="panel editor editor-modulo">
+        <div class="panel-heading">
+            <h2>{{ selecionado() ? "Editar registro" : "Cadastrar candidato" }}</h2>
+            <button mat-button (click)="fechar()" [disabled]="salvando()">Fechar edição</button>
+        </div>
+
+        <form class="formulario-modulo" [formGroup]="candidato" (ngSubmit)="salvar()">
+            <mat-form-field appearance="outline"
+                ><mat-label>Nome completo</mat-label
+                ><input matInput formControlName="nomeCompleto" maxlength="160" /><mat-error
+                    >Informe o nome completo.</mat-error
+                ></mat-form-field
+            >
+            <div class="field-grid">
+                <mat-form-field appearance="outline"
+                    ><mat-label>E-mail do candidato</mat-label
+                    ><input matInput type="email" formControlName="email" maxlength="254" /><mat-error
+                        >Informe um e-mail válido.</mat-error
+                    ></mat-form-field
+                ><mat-form-field appearance="outline"
+                    ><mat-label>Telefone</mat-label><input matInput formControlName="telefone" maxlength="40"
+                /></mat-form-field>
+            </div>
+            <div class="field-grid">
+                <mat-form-field appearance="outline"
+                    ><mat-label>Cargo pretendido</mat-label
+                    ><input matInput formControlName="cargoPretendido" maxlength="160" /></mat-form-field
+                ><mat-form-field appearance="outline"
+                    ><mat-label>Situação da candidatura</mat-label
+                    ><mat-select formControlName="situacao">
+                        @for (opcao of ["novo", "em_analise", "aprovado", "reprovado"]; track opcao) {
+                            <mat-option [value]="opcao">{{ situacao(opcao) }}</mat-option>
+                        }
+                    </mat-select></mat-form-field
+                >
+            </div>
+            <mat-form-field appearance="outline"
+                ><mat-label>Link do currículo</mat-label
+                ><input matInput formControlName="urlCurriculo" maxlength="2000" placeholder="https://..." /><mat-error
+                    >Use um link com http:// ou https://.</mat-error
+                ></mat-form-field
+            >
+            @if (selecionado()?.urlCurriculo) {
+                <a
+                    mat-stroked-button
+                    [href]="enderecoCurriculo(selecionado()!)"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    >Abrir currículo salvo</a
+                >
+            }
+            <mat-form-field appearance="outline"
+                ><mat-label>Resumo profissional</mat-label
+                ><textarea matInput formControlName="resumoProfissional" rows="4" maxlength="10000"></textarea>
+            </mat-form-field>
+            <mat-form-field appearance="outline"
+                ><mat-label>Observações do candidato</mat-label
+                ><textarea matInput formControlName="observacoes" rows="3" maxlength="5000"></textarea>
+            </mat-form-field>
+            <mat-checkbox formControlName="arquivado">Registro arquivado</mat-checkbox>
+            <div class="salvar-row">
+                <span class="muted">{{
+                    candidato.dirty ? "Há alterações não salvas." : "Preencha os dados do candidato."
+                }}</span
+                ><button mat-flat-button type="submit" [disabled]="salvando() || candidato.invalid || !candidato.dirty">
+                    {{ salvando() ? "Salvando…" : "Salvar candidato" }}
+                </button>
+            </div>
+        </form>
+    </section>
+}
+<section class="panel registros-modulo">
+    <div class="panel-heading">
+        <h2>{{ "Candidatos recebidos" }}</h2>
+        <span class="badge">{{ pagina().total }} registros</span>
+    </div>
+    @if (carregando()) {
+        <p role="status">Carregando registros…</p>
+    } @else {
+        <table>
+            <thead>
+                <tr>
+                    <th scope="col">{{ "Candidato" }}</th>
+                    <th scope="col">{{ "Cargo" }}</th>
+                    <th scope="col">{{ "Recebido em" }}</th>
+                    <th scope="col">Situação</th>
+                    <th scope="col">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                @for (registro of pagina().registros; track registro.id) {
+                    <tr [class.registro-arquivado]="registro.arquivado">
+                        <th scope="row">
+                            {{ registro.nomeCompleto
+                            }}<span class="contato-registro">{{
+                                registro.email || registro.telefone || "Sem contato informado"
+                            }}</span>
+                        </th>
+                        <td [attr.data-label]="'Cargo'">{{ registro.cargoPretendido || "Não informado" }}</td>
+                        <td [attr.data-label]="'Recebido em'">{{ data(registro.recebidoEm) }}</td>
+                        <td data-label="Situação">
+                            <span class="badge">{{
+                                registro.arquivado ? "Arquivado" : situacao(registro.situacao)
+                            }}</span>
+                        </td>
+                        <td class="acoes-registro">
+                            <button mat-button (click)="editar(registro)" [disabled]="salvando()">Editar</button>
+                            @if (!registro.arquivado) {
+                                <button
+                                    mat-button
+                                    (click)="arquivar(registro)"
+                                    [disabled]="salvando() || edicao.pendente()"
+                                >
+                                    Arquivar
+                                </button>
+                            }
+                        </td>
+                    </tr>
+                } @empty {
+                    <tr>
+                        <td colspan="5">Nenhum registro encontrado.</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        <div class="paginacao-modulo">
+            <button
+                mat-button
+                (click)="carregar(pagina().pagina - 1)"
+                [disabled]="pagina().pagina === 0 || carregando()"
+            >
+                Anterior</button
+            ><span>Página {{ pagina().pagina + 1 }}</span
+            ><button
+                mat-button
+                (click)="carregar(pagina().pagina + 1)"
+                [disabled]="(pagina().pagina + 1) * pagina().tamanho >= pagina().total || carregando()"
+            >
+                Próxima
+            </button>
+        </div>
+    }
+</section>

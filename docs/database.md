@@ -13,3 +13,10 @@ Sessões são persistidas pelo pacote oficial `mongodb-spring-session`, sem expi
 A aplicação inicia sem dados de produção. O provisionamento cria administrador e empresa inicial. Não há importador PostgreSQL nesta entrega. Migrações SQL antigas ficam fora dos recursos executáveis, em `docs/legado-postgres`.
 
 As consultas de texto usam regex literal sem diferenciar maiúsculas/minúsculas. Não são busca semântica ou full-text. Métricas agregam contagens por janela e empresa; avaliar custo para bases grandes antes de dimensionar.
+
+A coleção `convites_empresas` guarda destinatário, referência da empresa e do usuário, hash do token, validade e uso. Índices únicos protegem a empresa e o hash. Não há TTL: convites vencidos permanecem para consulta de situação. A ativação e o reenvio validam o estado no servidor; não basta saber o e-mail para definir senha.
+
+
+A organização Java agora separa os módulos `chatbot-model`, `chatbot-repository`, `chatbot-service`, `chatbot-resource` e `chatbot-boot`. Essa reorganização não migra coleções: aliases preservam os `_class` anteriores, e os testes exercitam a leitura e nova gravação desses documentos. O bootstrap de índices e a migração idempotente de vínculos Chatwoot existentes foram mantidos. Mudanças futuras de dados/índices precisam de passos próprios de migração; reorganizar pacotes não os substitui.
+
+A consulta de métricas usa uma agregação de eventos, uma leitura de empresas e uma contagem de usuários ativos. A comparação com a implementação anterior conserva janelas, 15 buckets, empresas sem eventos, ordenação, separação de erros e exclusão de eventos ainda futuros. No cenário de teste de três empresas, os comandos reais ao Mongo passaram de 31 para 3; não foi realizado benchmark de latência.

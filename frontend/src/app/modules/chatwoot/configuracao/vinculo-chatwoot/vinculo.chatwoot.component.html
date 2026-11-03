@@ -1,0 +1,33 @@
+<section class="panel convite-panel">
+    <h2>Integração com Chatwoot</h2>
+    <p>
+        Informe a conta e a caixa de entrada que recebem as mensagens desta empresa. Cada combinação pertence a uma
+        única empresa na instalação atual do Chatwoot.
+    </p>
+    @if (erro()) {
+        <p role="alert" class="alert erro">{{ erro() }}</p>
+    }
+    @if (sucesso()) {
+        <p role="status" class="alert">Vínculo com o Chatwoot salvo.</p>
+    }
+    @if (carregando()) {
+        <p>Carregando vínculo…</p>
+    }
+    <form class="convite-form" [formGroup]="form" (ngSubmit)="salvar()">
+        <mat-form-field appearance="outline">
+            <mat-label>ID da conta do Chatwoot</mat-label>
+            <input matInput type="number" min="1" step="1" formControlName="accountId" />
+            <mat-hint>Valor de account.id no evento recebido.</mat-hint>
+            <mat-error>Informe um número inteiro positivo.</mat-error>
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+            <mat-label>ID da caixa de entrada do Chatwoot</mat-label>
+            <input matInput type="number" min="1" step="1" formControlName="inboxId" />
+            <mat-hint>Valor de inbox.id no evento recebido.</mat-hint>
+            <mat-error>Informe um número inteiro positivo.</mat-error>
+        </mat-form-field>
+        <button mat-flat-button type="submit" [disabled]="carregando() || ocupado() || form.invalid">
+            {{ ocupado() ? "Salvando…" : "Salvar vínculo com Chatwoot" }}
+        </button>
+    </form>
+</section>

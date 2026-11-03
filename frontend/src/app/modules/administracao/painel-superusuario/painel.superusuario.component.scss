@@ -1,0 +1,264 @@
+:host {
+    display: block;
+    min-width: 0;
+}
+.superusuario-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+}
+.superusuario-heading > .badge {
+    flex-shrink: 0;
+    gap: 6px;
+}
+.superusuario-heading .badge ui-icon {
+    width: 16px;
+    height: 16px;
+}
+.superusuario-secoes {
+    display: flex;
+    gap: 8px;
+    border-bottom: 1px solid #e4e9ed;
+    margin-bottom: 24px;
+    padding-bottom: 8px;
+}
+.superusuario-secoes button.active {
+    background: #e5edf1;
+    color: #0d3b4c;
+}
+.superusuario-secoes button {
+    flex: none;
+    width: auto;
+}
+.prompt-previa,
+.historico-prompts,
+.grafico-mensagens,
+.metricas-empresas,
+.metricas-detalhes,
+.integracao-metricas {
+    margin-top: 20px;
+}
+.prompt-previa pre,
+.historico-prompts pre {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font-family: inherit;
+    font-size: 13px;
+    line-height: 1.7;
+    background: #f7f9fa;
+    padding: 16px;
+    border-radius: 8px;
+}
+.historico-prompts details {
+    border-top: 1px solid #e4e9ed;
+    padding: 14px 0;
+}
+.historico-prompts summary {
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 13px;
+}
+.historico-prompts summary span {
+    color: #647780;
+}
+.metricas-atualizacao {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+.metricas-atualizacao p {
+    margin: 0;
+    font-size: 12px;
+}
+.coleta-pendente {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #eef3f7;
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 16px;
+}
+.coleta-pendente ui-icon {
+    width: 22px;
+    height: 22px;
+    flex-shrink: 0;
+}
+.coleta-pendente strong {
+    font-size: 13px;
+}
+.coleta-pendente p {
+    margin: 4px 0 0;
+    font-size: 12px;
+    color: #647780;
+}
+.metricas-cards {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 16px;
+}
+.metrica-card {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.metrica-card .eyebrow {
+    font-size: 10px;
+    line-height: 1.5;
+}
+.metrica-card > strong {
+    font-size: 36px;
+    letter-spacing: -1px;
+}
+.metrica-card p {
+    margin: 0;
+    font-size: 11px;
+    color: #647780;
+}
+.grafico-mensagens figure {
+    margin: 16px 0 0;
+}
+.grafico-barras {
+    height: 170px;
+    display: grid;
+    grid-template-columns: repeat(15, minmax(0, 1fr));
+    gap: 8px;
+    border-bottom: 1px solid #dbe3e8;
+}
+.grafico-coluna {
+    position: relative;
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding-top: 22px;
+}
+.grafico-coluna i {
+    display: block;
+    background: #0d3b4c;
+    border-radius: 4px 4px 0 0;
+    width: 70%;
+}
+.grafico-coluna > span {
+    position: absolute;
+    top: 0;
+    font-size: 10px;
+    color: #647780;
+}
+.grafico-mensagens figcaption {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: #647780;
+    padding-top: 8px;
+}
+.tabela-metricas table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 13px;
+}
+.tabela-metricas th,
+.tabela-metricas td {
+    text-align: right;
+    padding: 14px 8px;
+    border-bottom: 1px solid #e7ecef;
+}
+.tabela-metricas th:first-child {
+    text-align: left;
+    overflow-wrap: anywhere;
+}
+.tabela-metricas thead th {
+    color: #647780;
+    font-size: 11px;
+}
+.tabela-metricas tbody th {
+    font-weight: 500;
+}
+.metricas-detalhes {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+}
+.metricas-detalhes > div {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.metricas-detalhes span {
+    color: #647780;
+    font-size: 11px;
+}
+.metricas-detalhes strong {
+    font-size: 14px;
+}
+.integracao-metricas summary {
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+}
+.integracao-metricas p {
+    font-size: 13px;
+    line-height: 1.7;
+}
+.integracao-metricas code {
+    overflow-wrap: anywhere;
+}
+@media (max-width: 1050px) {
+    .metricas-cards {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+@media (max-width: 700px) {
+    .superusuario-heading {
+        flex-direction: column;
+        gap: 0;
+        margin-bottom: 16px;
+    }
+    .superusuario-secoes {
+        margin-bottom: 16px;
+    }
+    .superusuario-secoes button {
+        flex: none;
+    }
+    .superusuario-heading h1 {
+        font-size: 23px;
+    }
+    .metricas-atualizacao {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 8px;
+    }
+    .metricas-cards {
+        gap: 10px;
+    }
+    .metrica-card {
+        padding: 16px;
+    }
+    .metrica-card > strong {
+        font-size: 30px;
+    }
+    .grafico-barras {
+        gap: 3px;
+        height: 140px;
+    }
+    .grafico-coluna > span {
+        font-size: 8px;
+    }
+    .historico-prompts summary {
+        flex-direction: column;
+        gap: 4px;
+    }
+    .metricas-detalhes {
+        gap: 20px;
+    }
+    .tabela-metricas th,
+    .tabela-metricas td {
+        padding: 12px 4px;
+        font-size: 11px;
+    }
+}

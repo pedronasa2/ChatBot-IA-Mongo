@@ -8,7 +8,7 @@ O superusuário seleciona a empresa no cabeçalho, abre **Negócios** e altera o
 
 Quando habilitado, o item aparece no menu de todos os usuários autorizados da empresa. Proprietários e editores podem consultar e gerenciar os registros conforme os papéis existentes; usuários inativos ou sem vínculo são recusados. O superusuário também precisa habilitar o módulo para consultar seus registros.
 
-A aplicação verifica as permissões no acesso à rota, ao retornar à janela e a cada 15 segundos enquanto estiver visível. Se o módulo for desabilitado durante o uso, a tela é fechada e seu menu é removido. Toda operação do backend consulta o estado atual no banco, sem depender do cache do navegador ou da sessão. Operações em andamento mantêm um bloqueio compartilhado na empresa até terminar; a desabilitação aguarda essas operações e impede as seguintes.
+A aplicação verifica as permissões no acesso à rota, ao retornar à janela e a cada 15 segundos enquanto estiver visível. Se o módulo for desabilitado durante o uso, a tela é fechada e seu menu é removido. Toda operação do backend consulta o estado atual no banco, sem depender do cache do navegador ou da sessão. Todas as operações de módulos, inclusive consultas, escrevem `controle_acesso_modulos` na empresa dentro da mesma transação. Isso provoca conflito com uma desativação concorrente e também entre módulos da mesma empresa. MongoDB pode abortar uma das transações com `TransientTransactionError`; não há espera por bloqueio compartilhado nem retry automático. Depois de uma desativação confirmada, as operações seguintes são recusadas.
 
 ## Banco de candidatos
 
@@ -67,7 +67,7 @@ Use a API dedicada, com token do serviço de automação em `X-Token-Modulos`:
 
 Os métodos, corpos e paginação são os mesmos da API do painel. Todas as operações verificam os flags atuais da empresa. Módulo desabilitado retorna **403**, sem consultar ou alterar seus registros. O fluxo deve tratar esse retorno como recurso indisponível e interromper as ações desse módulo. Cookie de cliente e token de métricas não substituem esta credencial.
 
-Configure `MODULES_INTEGRATION_TOKEN` no backend/n8n. No desenvolvimento, a credencial está em `backend/config/integracao-local.properties` e `infra/.env`, arquivos ignorados pelo Git. É uma credencial do serviço confiável de automação, que permite operar os módulos habilitados das empresas indicadas na rota; não é fornecida aos clientes e não permite habilitar módulos, editar o prompt global ou administrar empresas. Sem token, a integração fica desabilitada. Use os endpoints da aplicação, em vez de acesso direto às tabelas pelo fluxo n8n.
+Configure `MODULES_INTEGRATION_TOKEN` no backend/n8n. No desenvolvimento, configure a variável de ambiente; `infra/run-backend-local.sh` também lê `infra/.env`, ignorado pelo Git. É uma credencial do serviço confiável de automação, que permite operar os módulos habilitados das empresas indicadas na rota; não é fornecida aos clientes e não permite habilitar módulos, editar o prompt global ou administrar empresas. Sem token, a integração fica desabilitada. Use os endpoints da aplicação, em vez de acesso direto às coleções pelo fluxo n8n.
 
 Exemplo de candidato:
 

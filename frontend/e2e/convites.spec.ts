@@ -1,0 +1,53 @@
+import { test, expect } from '@playwright/test';
+import { readFileSync } from 'node:fs';
+
+test('master cria empresa, simula convite e cliente define senha com acesso isolado', async ({page,browser},info)=>{
+  await page.goto('/');
+  await page.getByLabel('E-mail',{exact:true}).fill('developer@example.test');
+  await page.getByLabel('Senha',{exact:true}).fill(readFileSync(process.env['E2E_CREDENTIAL_FILE']!,'utf8'));
+  await page.getByRole('button',{name:'Entrar no painel'}).click();
+  await page.getByRole('button',{name:'Negócios',exact:true}).click();
+  await page.getByRole('button',{name:'Nova empresa',exact:true}).click();
+  const email=`cliente-${info.project.name}@example.test`;
+  const nome=`Novo negócio ${info.project.name}`;
+  await page.getByLabel('Nome da nova empresa').fill(nome);
+  await page.getByLabel('Nome do responsável').fill('Cliente de teste');
+  await page.getByLabel('E-mail do cliente').fill(email);
+  await page.getByRole('button',{name:'Criar empresa e simular convite'}).click();
+  await expect(page.getByText('Convite simulado — nenhum e-mail enviado.',{exact:true})).toBeVisible();
+  const link=await page.getByLabel('Link de primeiro acesso').inputValue();
+  await expect(page.getByLabel('Nome comercial')).toHaveValue(nome);
+  await expect(page.getByLabel('ID da conta do Chatwoot')).toBeEnabled();
+  await page.getByLabel('ID da conta do Chatwoot').fill('1');
+  const caixa=info.project.name.includes('mobile')?'102':'101';
+  await page.getByLabel('ID da caixa de entrada do Chatwoot').fill(caixa);
+  await page.getByRole('button',{name:'Salvar vínculo com Chatwoot',exact:true}).click();
+  await expect(page.getByText('Vínculo com o Chatwoot salvo.',{exact:true})).toBeVisible();
+  await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBeTruthy();
+  await page.screenshot({path:`test-results/${info.project.name}-novo-convite.png`,fullPage:true});
+  const ctx=await browser.newContext({viewport:page.viewportSize()!});
+  const cliente=await ctx.newPage();
+  try{
+    await cliente.goto(link);
+    await cliente.getByLabel('E-mail do convite').fill(email);
+    await cliente.getByLabel('Nova senha',{exact:true}).fill('SenhaClienteTeste2026');
+    await cliente.getByLabel('Confirmar nova senha').fill('SenhaOutraTeste2026');
+    await cliente.getByRole('button',{name:'Criar senha e ativar acesso'}).click();
+    await expect(cliente.getByRole('alert')).toContainText('não coincidem');
+    await cliente.getByLabel('Confirmar nova senha').fill('SenhaClienteTeste2026');
+    await cliente.getByRole('button',{name:'Criar senha e ativar acesso'}).click();
+    await expect(cliente.getByRole('status')).toContainText('Acesso ativado');
+    await cliente.getByRole('link',{name:'Ir para o login'}).click();
+    await cliente.getByLabel('E-mail',{exact:true}).fill(email);
+    await cliente.getByLabel('Senha',{exact:true}).fill('SenhaClienteTeste2026');
+    await cliente.getByRole('button',{name:'Entrar no painel'}).click();
+    await expect(cliente.getByRole('button',{name:'Meu negócio',exact:true})).toBeVisible();
+    await expect(cliente.getByRole('button',{name:'Nova empresa',exact:true})).toHaveCount(0);
+    await cliente.getByRole('button',{name:'Meu negócio',exact:true}).click();
+    await expect(cliente.getByLabel('ID da conta do Chatwoot')).toHaveCount(0);
+    const lista=await cliente.request.get(new URL('/api/empresas',link).toString());
+    expect(lista.ok()).toBeTruthy();expect((await lista.json()).map((x:any)=>x.nome)).toEqual([nome]);
+    await page.getByRole('button',{name:'Atualizar situação do convite'}).click();
+    await expect(page.getByText('Aceito',{exact:true})).toBeVisible();
+  }finally{await ctx.close();}
+});
