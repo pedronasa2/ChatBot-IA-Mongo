@@ -2,6 +2,29 @@
 
 Versão independente do painel ChatBot-IA com Angular, Spring Boot e MongoDB. Mantém login, isolamento por empresa, configurações do bot, administração, métricas e módulos opcionais de candidatos e agenda. O repositório PostgreSQL original permanece separado.
 
+## Principais entidades e suas funções
+
+A empresa é a referência para separar os dados e controlar o acesso no painel. As principais entidades e representações de domínio são:
+
+| Entidade | Função no projeto | Persistência no MongoDB |
+| --- | --- | --- |
+| `Empresa` | Guarda os dados do negócio, como nome, contato, serviços e fuso horário. Também controla se o bot está ativo e se os módulos de candidatos e agenda estão habilitados. | `empresas` |
+| `Usuario` | Representa quem acessa o painel. Armazena nome, e-mail, hash da senha, situação de ativação e indicação de superusuário. | `usuarios` |
+| `VinculoUsuarioEmpresa` | Associa um usuário a uma empresa e registra seu papel. Sustenta a verificação de acesso aos dados de cada empresa. | `vinculos_usuarios_empresas` |
+| `ConviteEmpresa` | Controla o primeiro acesso do responsável pela empresa. Relaciona empresa, usuário e e-mail, além de guardar o hash do token, a validade e a data de uso do convite. | `convites_empresas` |
+| `ConfiguracaoBot` | Guarda a configuração do bot de uma empresa: nome, tom de voz, uso de emojis, instruções e orientações de transferência. Possui versão, estado, autor e revisão; o painel permite consultar e editar o rascunho. | `versoes_configuracoes_bot` |
+| `PromptGlobal` | Representa as instruções gerais administradas pelo superusuário e a opção de complementá-las com as configurações da empresa. | `configuracoes_globais` |
+| `VersaoPromptGlobal` | Representa uma versão salva do prompt global, com revisão, data e responsável, para consulta do histórico de alterações. | `historico_prompts_globais` |
+| `VinculoChatwoot` | Representa a associação da empresa a uma conta e uma caixa de entrada do Chatwoot, por meio de `accountId` e `inboxId`. | Campos da coleção `empresas` |
+| `Candidato` | Organiza os candidatos de uma empresa, incluindo contato, cargo pretendido, URL do currículo, resumo profissional, situação e arquivamento. Depende da habilitação do módulo de candidatos. | `candidatos` |
+| `Agendamento` | Organiza os atendimentos agendados por empresa, com pessoa, contato, assunto, responsável, início, fim, situação e arquivamento. Depende da habilitação do módulo de agenda. | `agendamentos_atendimento` |
+| `EventoMensagem` | Registra eventos de mensagens recebidas ou enviadas, com origem, resultado e horário. Fornece os dados usados nas métricas de atendimento. | `eventos_mensagens_atendimento` |
+| Evento de auditoria | Registra ações com empresa, usuário responsável, referência da configuração e data, permitindo rastrear alterações. É gravado como documento pelo `AuditoriaRepository`. | `eventos_auditoria` |
+
+Uma empresa pode ter vários vínculos de usuários, configurações do bot, candidatos, agendamentos e eventos de mensagens. O prompt global e seu histórico são compartilhados pelo sistema.
+
+Os modelos Java ficam em `backend/chatbot-model/src/main/java/br/com/painel`, organizados por funcionalidade. Algumas representações são records em pacotes `model/vo`, persistidos pelos repositories como documentos MongoDB. As regras de negócio ficam em `chatbot-service`, e o acesso ao banco em `chatbot-repository`. Consulte também os detalhes de [persistência](docs/database.md) e [arquitetura](docs/arquitetura.md).
+
 ## Banco e desenvolvimento
 
 Requer Java 25 LTS, Maven, Node 26.10 e MongoDB **replica set**. Transações protegem operações que envolvem vários documentos, como alteração com auditoria e provisionamento. Um MongoDB standalone não basta. Um replica set de um membro atende ao teste, mas não oferece alta disponibilidade.

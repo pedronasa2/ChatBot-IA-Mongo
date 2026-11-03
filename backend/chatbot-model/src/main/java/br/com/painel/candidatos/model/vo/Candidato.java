@@ -1,9 +1,7 @@
 package br.com.painel.candidatos.model.vo;
 
-import jakarta.validation.constraints.*;
-
 import java.time.Instant;
-import java.util.*;
+import java.util.UUID;
 
 public record Candidato(
         UUID id,
