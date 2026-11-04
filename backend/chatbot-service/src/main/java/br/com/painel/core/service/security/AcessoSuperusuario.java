@@ -1,5 +1,6 @@
 package br.com.painel.core.service.security;
 
+import br.com.painel.autenticacao.model.PerfilUsuario;
 import br.com.painel.autenticacao.model.Usuario;
 import br.com.painel.autenticacao.repository.UsuarioRepository;
 import br.com.painel.core.model.exception.ErroNegocio;
@@ -12,6 +13,7 @@ import java.util.UUID;
 
 @Component
 public class AcessoSuperusuario {
+
     private final UsuarioRepository usuarios;
 
     public AcessoSuperusuario(UsuarioRepository usuarios) {
@@ -24,7 +26,10 @@ public class AcessoSuperusuario {
 
     private Usuario usuario(String email) {
         return usuarios.findByEmail(email)
-                .filter(usuarioAtual -> usuarioAtual.ativo && usuarioAtual.superusuario)
+                .filter(
+                        usuarioAtual ->
+                                usuarioAtual.ativo
+                                        && usuarioAtual.perfil == PerfilUsuario.SUPERUSUARIO)
                 .orElse(null);
     }
 

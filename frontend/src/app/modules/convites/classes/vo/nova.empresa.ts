@@ -5,7 +5,5 @@ export class NovaEmpresa {
 
     email!: string;
 
-    moduloCandidatosHabilitado!: boolean;
 
-    moduloAgendaHabilitado!: boolean;
 }

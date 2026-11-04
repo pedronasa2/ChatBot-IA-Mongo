@@ -11,6 +11,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/auth")
 public class AutenticacaoResource {
+
     private final AcessoSuperusuario acessoSuperusuario;
 
     public AutenticacaoResource(AcessoSuperusuario acessoSuperusuario) {
@@ -25,6 +26,9 @@ public class AutenticacaoResource {
     @GetMapping("/me")
     public Map<String, Object> me(Principal p) {
         return Map.of(
-                "email", p.getName(), "superusuario", acessoSuperusuario.permitido(p.getName()));
+                "email",
+                p.getName(),
+                "perfil",
+                acessoSuperusuario.permitido(p.getName()) ? "SUPERUSUARIO" : "USUARIO");
     }
 }

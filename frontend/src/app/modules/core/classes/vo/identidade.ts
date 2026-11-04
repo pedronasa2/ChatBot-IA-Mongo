@@ -1,5 +1,4 @@
 export class Identidade {
     email!: string;
-
-    superusuario!: boolean;
+    perfil!: "SUPERUSUARIO" | "USUARIO";
 }

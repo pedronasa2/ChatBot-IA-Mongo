@@ -27,7 +27,7 @@ test("login, edição, gravação, recarga e logout", async ({
   await expect(
     page
       .getByRole("status")
-      .filter({ hasText: "Alterações salvas no rascunho." }),
+      .filter({ hasText: "Alterações salvas." }),
   ).toBeVisible();
   await page.reload();
   await page.getByRole("button", { name: "Meu negócio", exact: true }).click();
@@ -39,11 +39,11 @@ test("login, edição, gravação, recarga e logout", async ({
   await page
     .getByLabel("Instruções adicionais")
     .fill("Responda de forma objetiva.");
-  await page.getByRole("button", { name: "Salvar rascunho" }).click();
+  await page.getByRole("button", { name: "Salvar configurações" }).click();
   await expect(
     page
       .getByRole("status")
-      .filter({ hasText: "Alterações salvas no rascunho." }),
+      .filter({ hasText: "Alterações salvas." }),
   ).toBeVisible();
   await page.reload();
   await page.getByRole("button", { name: "Bot", exact: true }).click();

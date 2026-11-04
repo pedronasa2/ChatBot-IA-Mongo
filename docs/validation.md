@@ -1,4 +1,70 @@
-# Validação local da refatoração
+# Validação da nova modelagem — 04/11/2026
+
+Implementação do diagrama do README, mantendo os módulos Java e a organização Angular por funcionalidade, sem classes `Impl`.
+
+## Resultado atual
+
+- Quatro coleções de domínio: `empresas`, `usuarios`, `configuracoes_sistema`, `eventos_mensagens`; sessões continuam em coleção técnica separada.
+- `Usuario.perfil` controla `SUPERUSUARIO`/`USUARIO`, com empresa diretamente no usuário; bot embutido na empresa, convite embutido no usuário e identificadores Chatwoot diretamente na empresa.
+- Sem auditoria, histórico de prompt, coleção de vínculo ou versões do bot. Empresa, bot e Chatwoot usam a mesma revisão otimista.
+- Mensagens guardam somente `_id`, `empresaId` e `enviadoEm`. A chave de idempotência vira o próprio ObjectId, sem coleção adicional. Duplicatas idênticas não contam novamente; dados diferentes com o mesmo ID retornam conflito.
+- Gráficos filtram empresa/período e agrupam por minuto, hora ou dia. O fuso da empresa é informado na resposta e utilizado nos rótulos; consultas globais usam UTC.
+
+## Verificações
+
+- Java 25: 17 testes de integração e 1 teste de senha, sem falhas/erros/skip. Cobrem autorização por perfil/empresa e revogação em sessão aberta; CSRF/logout/sessão permanente; revisão compartilhada; bot e Chatwoot no documento da empresa; convite de uso único, renovação e expiração; prompt sem histórico; idempotência e schema das mensagens; agrupamento temporal; quatro coleções; conversão idempotente do legado; aborto transacional diante de múltiplas empresas.
+- Build Angular de produção aprovado com Node 26, incluindo templates, tipos e Sass.
+- Playwright: 20 execuções aprovadas (10 cenários em desktop e celular), incluindo criação/aceite de convite, Chatwoot, gravação/recarga do bot, filtros por hora, idempotência da coleta e revisão compartilhada entre formulários sujos de empresa e bot.
+- Conferência visual do painel de métricas em celular. O gráfico foi ajustado para manter os intervalos na mesma linha, com rolagem interna quando necessário.
+- `git diff --check`, sintaxe dos scripts e separação entre model/repository/service/resource conferidos.
+- Nenhum deploy, commit ou alteração de workflow n8n. A imagem Docker anterior não representa esta nova modelagem e não foi revalidada.
+
+## Migração do banco configurado
+
+Backup BSON completo das 12 coleções anteriores, com contagens, índices e hashes SHA-256, fora do repositório, em diretório privado:
+
+`/home/pedro/.local/share/chatbot-migration/backups/modelagem-2026-11-04T15-53-07.396460494Z`
+
+O banco `painel_mongo`, acessado pelo túnel configurado no projeto, foi migrado. A comparação com o backup confirmou os mesmos 2 usuários e 2 empresas, hashes de senha, perfil de superusuário, nomes/instruções dos bots, token do convite, prompt e 11 sessões. Permanecem somente as quatro coleções de domínio e `sessions`.
+
+A primeira execução do comando de migração usou a conexão do arquivo local, pois esse arquivo prevalecia sobre a variável `MONGODB_URI`. Os scripts foram corrigidos para mapear uma URI explícita para `SPRING_MONGODB_URI`, respeitada pelo Spring. A mesma migração foi depois executada e conferida sobre uma cópia integral do backup em banco local descartável, sem alterar novamente os dados reais.
+
+Os testes e a cópia descartável usaram MongoDB 7 em replica set, em instância local sem volume compartilhado. O ambiente MongoDB 8 padrão apresenta a incompatibilidade de kernel já registrada na validação anterior.
+
+Logs: `/tmp/chatbot-modelagem-java.log`, `/tmp/chatbot-modelagem-angular.log`, `/tmp/chatbot-modelagem-browser.log`, `/tmp/chatbot-modelagem-backup.log`, `/tmp/chatbot-modelagem-banco-conferencia.log`, `/tmp/chatbot-modelagem-migracao-copia.log`, `/tmp/chatbot-modelagem-copia-conferencia.log`.
+
+## Reproduzir
+
+```bash
+export JAVA_HOME=/home/pedro/.jdks/temurin-25
+export PATH="$JAVA_HOME/bin:/home/pedro/.local/share/painel/node26/bin:$PATH"
+mvn -f backend/pom.xml verify
+npm --prefix frontend run build
+E2E_BACKEND_PORT=18097 bash infra/test-browser.sh
+```
+
+Os comandos de teste exigem um MongoDB replica set descartável em `localhost:27027`; nunca usam o banco configurado da aplicação. O comando de migração é diferente e usa o banco da aplicação: veja as instruções de backup e execução no README.
+
+## Histórico anterior à remodelagem
+
+As seções abaixo descrevem execuções e contratos anteriores. Suas contagens não correspondem à suíte atual.
+
+# Validação da simplificação acadêmica — 04/11/2026
+
+Candidatos e agendamentos foram removidos do frontend, backend e modelo de empresa. Foram retiradas as permissões exclusivas desses recursos, as rotas de integração e o token de módulos. A seleção de empresa permanece somente no cabeçalho.
+
+- Java 25: 25 testes de integração e 1 teste de senha aprovados, sem falhas, erros ou testes ignorados. A regressão verifica que as rotas removidas retornam 404, os campos de habilitação não aparecem no JSON e a inicialização não cria as coleções removidas.
+- Build Angular aprovado com Node 26.
+- Playwright: 16 execuções aprovadas (8 cenários em desktop e celular), incluindo a ausência dos menus e controles removidos e os fluxos restantes de login, negócio, bot, convites, prompt, métricas e revisão concorrente.
+- Banco configurado em `backend/config/banco-local.properties`: `painel_mongo`, na VPS por túnel local. Foram excluídas apenas `candidatos` (1 documento) e `agendamentos_atendimento` (0 documentos). Conferência posterior confirmou a preservação das outras 12 coleções.
+- O MongoDB 8 local não iniciou devido à incompatibilidade reportada pelo próprio processo com o kernel. Os testes usaram MongoDB 7 em um replica set descartável, em `127.0.0.1:27027`, sem volume compartilhado e sem dados reais.
+- Nenhum deploy foi realizado. A imagem Docker anterior não foi revalidada para esta alteração.
+
+Logs desta execução: `/tmp/chatbot-remocao-java.log`, `/tmp/chatbot-remocao-angular.log`, `/tmp/chatbot-remocao-browser.log` e `/tmp/chatbot-remocao-banco.log`.
+
+## Histórico da refatoração anterior
+
+Os resultados abaixo antecedem a remoção de candidatos e agendamentos; as contagens e os fluxos descritos correspondem ao escopo da época.
 
 Alvo: `/home/pedro/Projetos/ChatBot-IA-Mongo`, a partir de `dec7c52722500e301ba56895ed95ccc8ede6206f`, preservando alterações locais de convites e vínculo Chatwoot. A árvore continua sem commit desta execução. O GRP Web foi consultado como referência, sem alterações nele. O projeto PostgreSQL não foi modificado.
 

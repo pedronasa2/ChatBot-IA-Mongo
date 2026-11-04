@@ -1,5 +1,6 @@
 package br.com.painel.empresas.model.vo;
 
+import br.com.painel.configuracoes.model.ConfiguracaoBot;
 import br.com.painel.empresas.model.Empresa;
 
 import java.time.Instant;
@@ -14,14 +15,13 @@ public record EmpresaResposta(
         String site,
         String servicos,
         String fusoHorario,
-        boolean botAtivo,
-        boolean moduloCandidatosHabilitado,
-        boolean moduloAgendaHabilitado,
+        ConfiguracaoBot bot,
         Long chatwootAccountId,
         Long chatwootInboxId,
         Long revisao,
         Instant criadoEm,
         Instant atualizadoEm) {
+
     public static EmpresaResposta de(Empresa e) {
         return new EmpresaResposta(
                 e.id,
@@ -32,9 +32,7 @@ public record EmpresaResposta(
                 e.site,
                 e.servicos,
                 e.fusoHorario,
-                e.botAtivo,
-                e.moduloCandidatosHabilitado,
-                e.moduloAgendaHabilitado,
+                e.bot,
                 e.chatwootAccountId,
                 e.chatwootInboxId,
                 e.revisao,

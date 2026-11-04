@@ -1304,25 +1304,3 @@ mat-checkbox {
         font-size: 10px;
     }
 }
-.opcoes-modulos {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 20px;
-    margin-bottom: 12px;
-}
-
-@media (max-width: 700px) {
-    .sidebar nav.com-modulos {
-        display: flex;
-        overflow-x: auto;
-        padding-bottom: 3px;
-    }
-    .sidebar nav.com-modulos button {
-        width: auto;
-        flex-shrink: 0;
-    }
-    .opcoes-modulos {
-        flex-direction: column;
-        gap: 8px;
-    }
-}

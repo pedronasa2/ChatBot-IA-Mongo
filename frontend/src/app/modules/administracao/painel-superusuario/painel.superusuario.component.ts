@@ -6,10 +6,11 @@ import {firstValueFrom} from "rxjs";
 import {UiModule} from "../../ui/ui.module";
 import {MetricasAtendimentoService} from "../services/metricas.atendimento.service";
 
+import {EmpresaService} from "../../empresas/services/empresa.service";
+import {EmpresaAcessivel} from "../../empresas/classes/vo/empresa.acessivel";
 import {PromptGlobal} from "../classes/model/prompt.global";
 import {PreviaPrompt} from "../classes/vo/previa.prompt";
 import {ResumoMetricas} from "../classes/vo/resumo.metricas";
-import {VersaoPromptGlobal} from "../classes/vo/versao.prompt.global";
 import {PromptGlobalService} from "../services/prompt.global.service";
 @Component({
     selector: "painel-superusuario",
@@ -20,6 +21,8 @@ import {PromptGlobalService} from "../services/prompt.global.service";
 })
 export class PainelSuperusuarioComponent {
     private readonly api = inject(PromptGlobalService);
+    private readonly empresasService = inject(EmpresaService);
+    readonly empresas = signal<EmpresaAcessivel[]>([]);
     private readonly metricasService = inject(MetricasAtendimentoService);
     private readonly destruidor = inject(DestroyRef);
     private readonly formularios = inject(FormBuilder);
@@ -33,12 +36,12 @@ export class PainelSuperusuarioComponent {
     readonly erro = signal("");
     readonly sucesso = signal("");
     readonly promptSalvo = signal<PromptGlobal | null>(null);
-    readonly historico = signal<VersaoPromptGlobal[]>([]);
     readonly metricas = signal<ResumoMetricas | null>(null);
     readonly empresaPrevia = signal("");
+    readonly filtros = this.formularios.nonNullable.group({empresaId: [""], intervalo: ["minute"], de: [""], ate: [""]});
     readonly previa = signal<PreviaPrompt | null>(null);
     readonly formularioPrompt = this.formularios.nonNullable.group({
-        promptSistema: ["", [Validators.required, Validators.maxLength(40000)]],
+        promptGlobal: ["", [Validators.required, Validators.maxLength(40000)]],
         complementarConfiguracoesEmpresa: [true],
         revisao: [0]
     });
@@ -58,17 +61,17 @@ export class PainelSuperusuarioComponent {
         this.carregando.set(true);
         this.erro.set("");
         try {
-            const [prompt, historico, metricas] = await Promise.all([
+            const [prompt, metricas, empresas] = await Promise.all([
                 firstValueFrom(this.api.prompt()),
-                firstValueFrom(this.api.historico()),
-                firstValueFrom(this.metricasService.consultar())
+                firstValueFrom(this.metricasService.consultar()),
+                firstValueFrom(this.empresasService.listar())
             ]);
             this.promptSalvo.set(prompt);
             this.formularioPrompt.reset(prompt);
             this.alteracoesPendentes.emit(false);
-            this.historico.set(historico);
             this.metricas.set(metricas);
-            this.empresaPrevia.set(metricas.porEmpresa[0]?.empresaId || "");
+            this.empresas.set(empresas);
+            this.empresaPrevia.set(empresas[0]?.id || "");
         } catch (erro) {
             this.tratarErro(erro);
         } finally {
@@ -91,20 +94,7 @@ export class PainelSuperusuarioComponent {
             this.formularioPrompt.reset(prompt);
             this.alteracoesPendentes.emit(false);
             this.previa.set(null);
-            // A confirmação de gravação independe da atualização da lista de versões.
-            this.historico.update((versoes) =>
-                [
-                    {
-                        promptSistema: prompt.promptSistema,
-                        complementarConfiguracoesEmpresa: prompt.complementarConfiguracoesEmpresa,
-                        revisao: prompt.revisao,
-                        criadoEm: prompt.atualizadoEm,
-                        usuarioResponsavelEmail: prompt.atualizadoPorEmail || ""
-                    },
-                    ...versoes
-                ].slice(0, 20)
-            );
-            this.sucesso.set("Prompt global salvo. Nova versão registrada no histórico.");
+            this.sucesso.set("Prompt global salvo.");
         } catch (erro) {
             this.tratarErro(erro);
         } finally {
@@ -118,7 +108,7 @@ export class PainelSuperusuarioComponent {
         this.atualizandoMetricas.set(true);
         this.erro.set("");
         try {
-            this.metricas.set(await firstValueFrom(this.metricasService.consultar()));
+            this.metricas.set(await firstValueFrom(this.metricasService.consultar(this.filtros.getRawValue())));
         } catch (erro) {
             this.tratarErro(erro);
         } finally {
@@ -154,7 +144,7 @@ export class PainelSuperusuarioComponent {
     }
 
     hora(valor: string): string {
-        return new Date(valor).toLocaleTimeString("pt-BR", {hour: "2-digit", minute: "2-digit"});
+        return new Date(valor).toLocaleString("pt-BR", {day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: this.metricas()?.fusoHorario || "UTC"});
     }
 
     numero(valor: number): string {
@@ -162,7 +152,7 @@ export class PainelSuperusuarioComponent {
     }
 
     alturaBarra(mensagens: number): number {
-        const maximo = Math.max(1, ...(this.metricas()?.volumePorMinuto.map((volume) => volume.mensagens) || []));
+        const maximo = Math.max(1, ...(this.metricas()?.volume.map((volume) => volume.mensagens) || []));
         return (mensagens / maximo) * 100;
     }
 

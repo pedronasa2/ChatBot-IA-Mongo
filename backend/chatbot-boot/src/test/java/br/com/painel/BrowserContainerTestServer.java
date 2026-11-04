@@ -12,6 +12,7 @@ import java.util.*;
  * Runs the production image against the same disposable fixture as the classpath browser server.
  */
 public class BrowserContainerTestServer {
+
     public static void main(String[] args) throws Exception {
         String image = Objects.requireNonNull(System.getenv("E2E_IMAGE"));
         String port = System.getenv().getOrDefault("E2E_BACKEND_PORT", "8087");
@@ -43,6 +44,7 @@ public class BrowserContainerTestServer {
         MongoFixture.usuario(
                 mongo, UUID.randomUUID(), "developer@example.test", encoder.encode(password), true);
         MongoFixture.empresa(mongo, empresa, user);
+        MongoFixture.empresa(mongo, UUID.randomUUID(), user);
         MongoFixture.vinculo(mongo, user, empresa);
         Files.writeString(credential, password);
         Files.setPosixFilePermissions(
@@ -64,9 +66,6 @@ public class BrowserContainerTestServer {
                                 "SERVER_PORT=" + port,
                                 "-e",
                                 "COOKIE_SECURE=false",
-                                "-e",
-                                "MODULES_INTEGRATION_TOKEN="
-                                        + System.getenv().getOrDefault("E2E_MODULES_TOKEN", ""),
                                 "-e",
                                 "METRICS_INGESTION_TOKEN="
                                         + System.getenv().getOrDefault("E2E_METRICS_TOKEN", ""),

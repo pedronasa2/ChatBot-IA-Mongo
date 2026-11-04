@@ -1,13 +1,14 @@
 package br.com.painel.empresas.service;
 
-import br.com.painel.auditoria.repository.AuditoriaRepository;
 import br.com.painel.core.model.exception.ErroNegocio;
 import br.com.painel.core.model.exception.NegocioException;
 import br.com.painel.core.service.security.AcessoEmpresa;
+import br.com.painel.core.service.security.AcessoSuperusuario;
 import br.com.painel.empresas.model.Empresa;
 import br.com.painel.empresas.model.vo.DadosEmpresa;
 import br.com.painel.empresas.model.vo.EmpresaResposta;
 import br.com.painel.empresas.repository.EmpresaRepository;
+import br.com.painel.superusuario.model.vo.DadosChatwoot;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,15 +18,18 @@ import java.util.*;
 
 @Service
 public class EmpresaService {
+
     private final AcessoEmpresa acesso;
+
     private final EmpresaRepository empresas;
-    private final AuditoriaRepository auditoria;
+
+    private final AcessoSuperusuario superusuario;
 
     public EmpresaService(
-            AcessoEmpresa acesso, EmpresaRepository empresas, AuditoriaRepository auditoria) {
+            AcessoEmpresa acesso, EmpresaRepository empresas, AcessoSuperusuario superusuario) {
         this.acesso = acesso;
         this.empresas = empresas;
-        this.auditoria = auditoria;
+        this.superusuario = superusuario;
     }
 
     @Transactional(readOnly = true)
@@ -70,7 +74,31 @@ public class EmpresaService {
         empresa.fusoHorario = dados.fusoHorario();
         empresa.atualizadoEm = Instant.now();
         empresas.save(empresa);
-        auditoria.auditar(empresaId, usuarioResponsavelId, null, "dados_empresa_salvos");
         return EmpresaResposta.de(empresa);
+    }
+
+    public EmpresaResposta salvarChatwoot(UUID id, DadosChatwoot dados, String email) {
+        superusuario.exigir(() -> email);
+        var e =
+            empresas.findById(id).orElseThrow(
+                () -> new NegocioException(
+                            ErroNegocio.NAO_ENCONTRADO,
+                            "Empresa não encontrada."));
+
+        if (e.revisao != dados.revisao()) {
+            throw new NegocioException(
+                ErroNegocio.CONFLITO,
+                "Dados alterados em outra sessão. Recarregue antes de salvar.");
+        }
+        e.chatwootAccountId = dados.chatwootAccountId();
+        e.chatwootInboxId = dados.chatwootInboxId();
+        e.atualizadoEm = Instant.now();
+        try {
+            return EmpresaResposta.de(empresas.save(e));
+        } catch (org.springframework.dao.DuplicateKeyException erro) {
+            throw new NegocioException(
+                ErroNegocio.CONFLITO,
+                "Esta conta e caixa do Chatwoot já estão vinculadas a outra empresa.");
+        }
     }
 }

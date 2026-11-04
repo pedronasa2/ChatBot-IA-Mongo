@@ -45,7 +45,7 @@
         </mat-form-field>
         <div class="salvar-row">
             <span class="muted" role="status">{{
-                dadosEmpresa.dirty ? "Há alterações não salvas." : "Dados salvos no rascunho."
+                dadosEmpresa.dirty ? "Há alterações não salvas." : "Dados salvos."
             }}</span>
             <button mat-flat-button type="submit" [disabled]="processando() || !dadosEmpresa.dirty">
                 {{ processando() ? "Salvando…" : "Salvar informações" }}
@@ -64,7 +64,7 @@
             <div class="context-detail">
                 <span>Fuso horário</span><strong>{{ empresa().fusoHorario }}</strong>
             </div>
-            <span class="badge draft"><i></i>Configuração em rascunho</span>
+            <span class="badge draft"><i></i>Configuração atual</span>
         </section>
         <section class="panel context-card">
             <div class="panel-heading">

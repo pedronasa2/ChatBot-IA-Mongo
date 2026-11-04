@@ -32,38 +32,7 @@
     width: auto;
 }
 .prompt-previa,
-.historico-prompts,
-.grafico-mensagens,
-.metricas-empresas,
-.metricas-detalhes,
-.integracao-metricas {
-    margin-top: 20px;
-}
 .prompt-previa pre,
-.historico-prompts pre {
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
-    font-family: inherit;
-    font-size: 13px;
-    line-height: 1.7;
-    background: #f7f9fa;
-    padding: 16px;
-    border-radius: 8px;
-}
-.historico-prompts details {
-    border-top: 1px solid #e4e9ed;
-    padding: 14px 0;
-}
-.historico-prompts summary {
-    cursor: pointer;
-    display: flex;
-    justify-content: space-between;
-    gap: 12px;
-    font-size: 13px;
-}
-.historico-prompts summary span {
-    color: #647780;
-}
 .metricas-atualizacao {
     display: flex;
     justify-content: space-between;
@@ -126,7 +95,9 @@
 .grafico-barras {
     height: 170px;
     display: grid;
-    grid-template-columns: repeat(15, minmax(0, 1fr));
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(16px, 1fr);
+    overflow-x: auto;
     gap: 8px;
     border-bottom: 1px solid #dbe3e8;
 }
@@ -249,11 +220,7 @@
     .grafico-coluna > span {
         font-size: 8px;
     }
-    .historico-prompts summary {
-        flex-direction: column;
-        gap: 4px;
-    }
-    .metricas-detalhes {
+        .metricas-detalhes {
         gap: 20px;
     }
     .tabela-metricas th,
@@ -261,4 +228,19 @@
         padding: 12px 4px;
         font-size: 11px;
     }
+}
+
+.filtros-metricas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 24px;
+    align-items: center;
+}
+.filtros-metricas mat-form-field {
+    flex: 1 1 180px;
+    min-width: 0;
+}
+.filtros-metricas p {
+    width: 100%;
 }

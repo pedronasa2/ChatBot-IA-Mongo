@@ -5,6 +5,7 @@ source "$project_root/infra/java25.sh"
 set -a
 if [[ -f "$project_root/infra/.env" ]]; then source "$project_root/infra/.env"; fi
 set +a
+if [[ -n "${MONGODB_URI:-}" ]]; then export SPRING_MONGODB_URI="$MONGODB_URI"; fi
 cd "$project_root/backend"
 mvn package
 jar=chatbot-boot/target/painel-bot-0.1.0.jar

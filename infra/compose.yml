@@ -5,7 +5,6 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: docker
       MONGODB_URI: ${MONGODB_URI:?Preencha MONGODB_URI com o banco dedicado MongoDB}
-      MODULES_INTEGRATION_TOKEN: ${MODULES_INTEGRATION_TOKEN:-}
       METRICS_INGESTION_TOKEN: ${METRICS_INGESTION_TOKEN:-}
       COOKIE_SECURE: ${COOKIE_SECURE:-true}
     restart: unless-stopped

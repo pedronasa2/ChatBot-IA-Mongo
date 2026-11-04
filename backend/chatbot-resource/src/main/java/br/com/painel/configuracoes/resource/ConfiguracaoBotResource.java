@@ -1,29 +1,31 @@
 package br.com.painel.configuracoes.resource;
 
-import br.com.painel.configuracoes.model.vo.DadosRascunhoBot;
-import br.com.painel.configuracoes.model.vo.RascunhoResposta;
+import br.com.painel.configuracoes.model.vo.DadosConfiguracaoBot;
 import br.com.painel.configuracoes.service.ConfiguracaoBotService;
+import br.com.painel.empresas.model.vo.EmpresaResposta;
+
 import jakarta.validation.Valid;
+
 import org.springframework.web.bind.annotation.*;
+
 import java.security.Principal;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/empresas/{id}/rascunho")
+@RequestMapping("/api/empresas/{id}/bot")
 public class ConfiguracaoBotResource {
-    private final ConfiguracaoBotService configuracaoBotService;
 
-    public ConfiguracaoBotResource(ConfiguracaoBotService configuracaoBotService) {
-        this.configuracaoBotService = configuracaoBotService;
-    }
+    private final ConfiguracaoBotService servico;
 
-    @GetMapping
-    public RascunhoResposta consultar(@PathVariable("id") UUID empresaId, Principal usuario) {
-        return configuracaoBotService.rascunho(empresaId, usuario.getName());
+    public ConfiguracaoBotResource(ConfiguracaoBotService servico) {
+        this.servico = servico;
     }
 
     @PutMapping
-    public RascunhoResposta salvar(@PathVariable("id") UUID empresaId, @Valid @RequestBody DadosRascunhoBot dados, Principal usuario) {
-        return configuracaoBotService.salvarRascunho(empresaId, dados, usuario.getName());
+    public EmpresaResposta salvar(
+            @PathVariable("id") UUID empresa,
+            @Valid @RequestBody DadosConfiguracaoBot dados,
+            Principal usuario) {
+        return servico.salvar(empresa, dados, usuario.getName());
     }
 }

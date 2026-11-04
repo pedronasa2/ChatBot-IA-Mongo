@@ -1,6 +1,5 @@
 painel:
   integracao:
-    token-modulos: ${MODULES_INTEGRATION_TOKEN:}
     token-metricas: ${METRICS_INGESTION_TOKEN:}
 spring:
   profiles:

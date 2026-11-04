@@ -1,5 +1,5 @@
 export class DadosPromptGlobal {
-    promptSistema!: string;
+    promptGlobal!: string;
 
     complementarConfiguracoesEmpresa!: boolean;
 

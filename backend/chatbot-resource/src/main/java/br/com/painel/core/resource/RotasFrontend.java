@@ -5,7 +5,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 
 @Controller
 public class RotasFrontend {
-    @GetMapping({"/", "/empresas/{empresaId}/candidatos", "/empresas/{empresaId}/agenda"})
+
+    @GetMapping("/")
     public String index() {
         return "forward:/index.html";
     }

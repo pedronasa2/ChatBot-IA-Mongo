@@ -38,8 +38,6 @@ export class EmpresaCadastroComponent {
         nome: ["", [Validators.required, Validators.maxLength(160)]],
         responsavel: ["", [Validators.required, Validators.maxLength(160)]],
         email: ["", [Validators.required, Validators.email, Validators.maxLength(254)]],
-        moduloCandidatosHabilitado: [false],
-        moduloAgendaHabilitado: [false]
     });
 
     constructor() {

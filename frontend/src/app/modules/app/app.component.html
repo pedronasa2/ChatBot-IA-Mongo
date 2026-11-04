@@ -21,7 +21,7 @@
                         <mat-select
                             [value]="empresaSelecionada()"
                             [disabled]="
-                                processando() || carregando() || salvandoEmpresa() || salvandoBot() || salvandoModulos()
+                                processando() || carregando() || salvandoEmpresa() || salvandoBot()
                             "
                             (selectionChange)="trocarEmpresa($event.value, $event.source)"
                         >
@@ -43,7 +43,7 @@
             <button
                 mat-button
                 (click)="sair()"
-                [disabled]="processando() || salvandoEmpresa() || salvandoBot() || salvandoModulos()"
+                [disabled]="processando() || salvandoEmpresa() || salvandoBot()"
                 class="logout-button"
             >
                 <ui-icon name="logout" />
@@ -52,10 +52,7 @@
         </header>
         <aside class="sidebar">
             <p class="nav-label">ESPAÇO DE TRABALHO</p>
-            <nav
-                aria-label="Navegação principal"
-                [class.com-modulos]="empresa()?.moduloCandidatosHabilitado || empresa()?.moduloAgendaHabilitado"
-            >
+            <nav aria-label="Navegação principal">
                 @for (
                     item of [
                         { id: "overview", label: "Visão geral", icon: "grid" },
@@ -76,18 +73,6 @@
                     >
                         <ui-icon [name]="item.icon" />
                         {{ item.label }}
-                    </button>
-                }
-                @if (empresa()?.moduloCandidatosHabilitado) {
-                    <button mat-button [class.active]="aba() === 'candidatos'" (click)="abrirModulo('candidatos')">
-                        <ui-icon name="person" />
-                        Banco de candidatos
-                    </button>
-                }
-                @if (empresa()?.moduloAgendaHabilitado) {
-                    <button mat-button [class.active]="aba() === 'agenda'" (click)="abrirModulo('agenda')">
-                        <ui-icon name="clock" />
-                        Agenda de atendimentos
                     </button>
                 }
                 @if (superusuario()) {
@@ -147,26 +132,17 @@
                         (sessaoIndisponivel)="revalidarAcessoSuperusuario()"
                     />
                 }
-                <div
-                    [hidden]="
-                        carregando() ||
-                        ((aba() === 'candidatos' || aba() === 'agenda') &&
-                            (!empresa() || empresa()?.id !== empresaRota()))
-                    "
-                >
-                    <router-outlet />
-                </div>
                 @if (aba() === "dadosEmpresa" && superusuario()) {
                     <cadastro-negocio
                         [hidden]="aba() !== 'dadosEmpresa'"
                         [empresaId]="empresaSelecionada()"
                         (criada)="empresaCriada($event)"
                     />
-                    @if (empresaSelecionada()) {
+                    @if (empresa()) {
                         <vinculo-chatwoot
                             [hidden]="aba() !== 'dadosEmpresa'"
-                            [empresaId]="empresaSelecionada()"
-                            (salvo)="atualizarPermissoesEmpresa()"
+                            [empresa]="empresa()!"
+                            (salvo)="empresaSalva($event)"
                         />
                     }
                 }
@@ -184,7 +160,7 @@
                                     <h2>Prepare seu atendimento</h2>
                                     <span class="badge paused"><i></i>Bot pausado</span>
                                 </div>
-                                <p>O bot permanece pausado. Suas configurações são salvas como rascunho.</p>
+                                <p>O bot permanece pausado. As configurações ficam salvas na empresa.</p>
                                 <button mat-flat-button (click)="trocarAba('dadosEmpresa')">
                                     {{ superusuario() ? "Gerenciar negócios" : "Configurar meu negócio" }}
                                     <ui-icon name="arrow" />
@@ -195,8 +171,8 @@
                                     <span class="eyebrow">PUBLICAÇÃO</span
                                     ><span class="estado-icon"><ui-icon name="layers" /></span>
                                 </div>
-                                <h2>Nenhuma versão publicada</h2>
-                                <p>Teste e publicação após concluir a configuração.</p>
+                                <h2>Configuração do assistente</h2>
+                                <p>Revise os dados e as orientações de atendimento.</p>
                             </section>
                             <section class="panel estado-card">
                                 <div class="estado-label">
@@ -216,23 +192,11 @@
                             <ol class="setup-steps">
                                 <li><span>1</span>Informe os dados da empresa.</li>
                                 <li><span>2</span>Defina o nome e o tom do assistente.</li>
-                                <li><span>3</span>Salve o rascunho para continuar.</li>
+                                <li><span>3</span>Salve as configurações para continuar.</li>
                             </ol>
                         </section>
                     }
                     <section [hidden]="aba() !== 'dadosEmpresa'">
-                        <span class="eyebrow">CONHECIMENTO DO NEGÓCIO</span>
-
-                        <p class="lead">Mantenha os dados claros para orientar o atendimento.</p>
-                        @if (superusuario()) {
-                            <permissoes-editor
-                                [empresa]="empresa()!"
-                                (pendente)="permissoesPendentes.set($event)"
-                                (ocupado)="salvandoModulos.set($event)"
-                                (salvo)="permissoesSalvas($event)"
-                                (falha)="tratarFalha($event)"
-                            />
-                        }
                         <empresas-editor
                             [empresa]="empresa()!"
                             [superusuario]="superusuario()"
@@ -242,11 +206,11 @@
                             (falha)="tratarFalha($event)"
                         />
                     </section>
-                    @if (rascunho()) {
+                    @if (empresa()) {
                         <bot-editor
                             [hidden]="aba() !== 'bot'"
                             [empresaId]="empresaSelecionada()"
-                            [snapshot]="rascunho()!"
+                            [snapshot]="empresa()!"
                             (pendente)="botPendente.set($event)"
                             (ocupado)="salvandoBot.set($event)"
                             (salvo)="botSalvo($event)"
@@ -259,7 +223,7 @@
         <footer class="app-footer">
             <div>
                 <span class="footer-estado"><i></i>Bot pausado</span
-                ><span class="footer-draft">Configuração em rascunho</span>
+                ><span class="footer-draft">Configuração do assistente</span>
             </div>
             <span class="footer-fusoHorario"
                 ><ui-icon name="clock" /> {{ empresa()?.fusoHorario || "Fuso da empresa" }}</span

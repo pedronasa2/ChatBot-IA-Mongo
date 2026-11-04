@@ -9,6 +9,7 @@ import java.util.*;
 
 /** Banco descartável e usuário exclusivo dos testes de navegador. Nunca usar em produção. */
 public class BrowserTestServer {
+
     public static void main(String[] args) throws Exception {
         String porta = System.getenv().getOrDefault("E2E_BACKEND_PORT", "8087");
         var app = new SpringApplication(Aplicacao.class);
@@ -18,8 +19,6 @@ public class BrowserTestServer {
                         "--server.servlet.session.cookie.secure=false",
                         "--server.address=127.0.0.1",
                         "--server.port=" + porta,
-                        "--painel.integracao.token-modulos="
-                                + System.getenv().getOrDefault("E2E_MODULES_TOKEN", ""),
                         "--painel.integracao.token-metricas="
                                 + System.getenv().getOrDefault("E2E_METRICS_TOKEN", ""));
         var mongo = context.getBean(MongoTemplate.class);
@@ -30,6 +29,7 @@ public class BrowserTestServer {
         MongoFixture.usuario(
                 mongo, UUID.randomUUID(), "developer@example.test", encoder.encode(password), true);
         MongoFixture.empresa(mongo, empresa, user);
+        MongoFixture.empresa(mongo, UUID.randomUUID(), user);
         MongoFixture.vinculo(mongo, user, empresa);
         String file = System.getenv("E2E_CREDENTIAL_FILE");
         if (file == null) {

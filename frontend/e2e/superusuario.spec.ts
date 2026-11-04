@@ -22,6 +22,10 @@ test('desenvolvedor sem vínculo salva o prompt, vê a prévia e conta eventos �
   await expect(page.getByRole('button', { name: 'Meu negócio', exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Negócios', exact: true }).click();
   await expect(page.getByRole('combobox', { name: 'Empresa', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Banco de candidatos', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Agenda de atendimentos', exact: true })).toHaveCount(0);
+  await expect(page.getByLabel('Habilitar banco de candidatos', { exact: true })).toHaveCount(0);
+  await expect(page.getByLabel('Habilitar agenda de atendimentos', { exact: true })).toHaveCount(0);
   await expect(page.getByLabel('Nome comercial', { exact: true })).toBeVisible();
   await expect(page.getByRole('combobox', { name: 'Empresa', exact: true }))
     .toContainText(await page.getByLabel('Nome comercial', { exact: true }).inputValue());
@@ -60,10 +64,9 @@ test('desenvolvedor sem vínculo salva o prompt, vê a prévia e conta eventos �
   const antes = await (await page.request.get('/api/superusuario/metricas')).json();
   const evento = {
     empresaId: antes.porEmpresa[0].empresaId,
-    origem: 'teste-navegador', idEventoOrigem: `envio-${informacoes.project.name}`,
-    direcao: 'enviada', resultado: 'sucesso', ocorridoEm: new Date(Date.now() - 2000).toISOString(),
+    enviadoEm: new Date(Date.now() - 2000).toISOString(),
   };
-  const opcoes = { headers: { 'X-Token-Metricas': process.env['E2E_METRICS_TOKEN']! }, data: evento };
+  const opcoes = { headers: { 'X-Token-Metricas': process.env['E2E_METRICS_TOKEN']!, 'Idempotency-Key': informacoes.project.name === 'desktop' ? '111111111111111111111111' : '222222222222222222222222' }, data: evento };
   const primeiro = await page.request.post('/api/integracoes/mensagens', opcoes);
   expect(primeiro.status()).toBe(201);
   const repetido = await page.request.post('/api/integracoes/mensagens', opcoes);
@@ -73,6 +76,13 @@ test('desenvolvedor sem vínculo salva o prompt, vê a prévia e conta eventos �
   await expect(page.locator('.metrica-card').filter({ hasText: 'Total de mensagens' }).locator('strong'))
     .toHaveText((antes.totalMensagens + 1).toLocaleString('pt-BR'));
   await expect(page.getByRole('heading', { name: 'Mensagens por empresa' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Histórico do prompt global' })).toHaveCount(0);
+  await expect(page.getByText('Erros nas últimas 24h', {exact:true})).toHaveCount(0);
+  await page.getByRole('combobox', {name:'Agrupar por', exact:true}).click();
+  await page.getByRole('option', {name:'Hora', exact:true}).click();
+  const grafico = page.waitForResponse(r => r.url().includes('/api/superusuario/metricas?') && r.url().includes('intervalo=hour'));
+  await page.getByRole('button', {name:'Aplicar filtros', exact:true}).click();
+  expect((await (await grafico).json()).volume.length).toBeGreaterThanOrEqual(24);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
   await page.screenshot({ path: `test-results/${informacoes.project.name}-superusuario-metricas.png`, fullPage: true });
   await page.getByRole('button', { name: 'Sair', exact: true }).click();

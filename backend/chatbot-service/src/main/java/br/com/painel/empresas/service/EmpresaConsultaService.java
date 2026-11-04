@@ -1,51 +1,40 @@
 package br.com.painel.empresas.service;
 
+import br.com.painel.autenticacao.model.PerfilUsuario;
 import br.com.painel.autenticacao.repository.UsuarioRepository;
 import br.com.painel.empresas.model.vo.EmpresaAcessivel;
 import br.com.painel.empresas.repository.EmpresaRepository;
-import br.com.painel.empresas.repository.VinculoUsuarioEmpresaRepository;
 
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
-import java.util.*;
+import java.util.List;
 
 @Service
 public class EmpresaConsultaService {
-    private final UsuarioRepository usuarios;
-    private final EmpresaRepository empresas;
-    private final VinculoUsuarioEmpresaRepository vinculos;
 
-    public EmpresaConsultaService(
-            UsuarioRepository usuarios,
-            EmpresaRepository empresas,
-            VinculoUsuarioEmpresaRepository vinculos) {
+    private final UsuarioRepository usuarios;
+
+    private final EmpresaRepository empresas;
+
+    public EmpresaConsultaService(UsuarioRepository usuarios, EmpresaRepository empresas) {
         this.usuarios = usuarios;
         this.empresas = empresas;
-        this.vinculos = vinculos;
     }
 
     public List<EmpresaAcessivel> listar(String email) {
-        var usuarioAtual =
-                usuarios.findByEmail(email).filter(usuario -> usuario.ativo).orElse(null);
-        if (usuarioAtual == null) {
+        var u = usuarios.findByEmail(email).filter(usuario -> usuario.ativo).orElse(null);
+        if (u == null) {
             return List.of();
         }
-        var papeis = new HashMap<UUID, String>();
-        vinculos.findByUsuarioId(usuarioAtual.id)
-                .forEach(vinculo -> papeis.put(vinculo.empresaId, vinculo.papel));
-        return (usuarioAtual.superusuario
+        var acessiveis =
+                u.perfil == PerfilUsuario.SUPERUSUARIO
                         ? empresas.findAll(Sort.by("nome", "id"))
-                        : empresas.findByIdIn(papeis.keySet(), Sort.by("nome", "id")))
-                .stream()
-                        .map(
-                                empresa ->
-                                        new EmpresaAcessivel(
-                                                empresa.id,
-                                                empresa.nome,
-                                                usuarioAtual.superusuario
-                                                        ? "superusuario"
-                                                        : papeis.get(empresa.id)))
-                        .toList();
+                        : u.empresaId == null
+                                ? List.<br.com.painel.empresas.model.Empresa>of()
+                                : empresas.findById(u.empresaId).stream().toList();
+        return acessiveis.stream()
+                .map(e -> new EmpresaAcessivel(e.id, e.nome, u.perfil.name()))
+                .toList();
     }
 }

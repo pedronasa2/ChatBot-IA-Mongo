@@ -13,7 +13,7 @@
         </div>
         <mat-form-field appearance="outline">
             <mat-label>Nome de apresentação </mat-label>
-            <input matInput formControlName="nomeBot" maxlength="80" />
+            <input matInput formControlName="nome" maxlength="80" />
             <mat-error>Informe um nome (até 80 caracteres). </mat-error>
         </mat-form-field>
         <section class="tomVoz-section">
@@ -70,11 +70,10 @@
             <span class="muted" role="status">{{
                 bot.dirty
                     ? "Há alterações não salvas."
-                    : "Dados salvos no
-            rascunho."
+                    : "Configurações salvas."
             }}</span>
             <button mat-flat-button type="submit" [disabled]="processando() || !bot.dirty">
-                {{ processando() ? "Salvando…" : "Salvar rascunho" }}
+                {{ processando() ? "Salvando…" : "Salvar configurações" }}
             </button>
         </div>
     </form>
@@ -82,10 +81,10 @@
         <section class="panel context-card">
             <div class="panel-heading">
                 <ui-icon name="layers" />
-                <h2>Seu rascunho</h2>
+                <h2>Sua configuração</h2>
             </div>
             <div class="context-detail">
-                <span>Nome de apresentação</span><strong>{{ bot.controls.nomeBot.value || "Defina um nome" }}</strong>
+                <span>Nome de apresentação</span><strong>{{ bot.controls.nome.value || "Defina um nome" }}</strong>
             </div>
             <div class="context-detail">
                 <span>Tom de voz</span

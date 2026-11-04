@@ -1,42 +1,51 @@
-# Contrato HTTP — etapa A
+# Contrato HTTP
 
-Mesmo domínio do painel. Autenticação do painel em sessão; suas mutações requerem CSRF. As integrações de módulos e métricas usam tokens exclusivos e não aceitam sessão como substituto. Não há CORS aberto nem tokens de serviços no navegador.
+O painel usa sessão e CSRF nas mutações. A integração de métricas usa token próprio; sessão não substitui essa credencial. Não há CORS aberto.
 
-| Método | Rota | Resultado |
+| Método | Rota | Contrato |
 | --- | --- | --- |
-| GET | /api/auth/csrf | `{token, headerName}` para a sessão atual |
-| POST | /api/auth/login | form-urlencoded com `email`, `senha`; CSRF; 204 ou 401 |
-| GET | /api/auth/me | `{email, superusuario}`; 401 sem sessão |
-| POST | /api/auth/logout | CSRF; invalida sessão; 204 |
-| GET | /api/empresas | empresas vinculadas ao usuário ativo; superusuário ativo vê todas |
-| GET / PUT | /api/empresas/{uuid} | dados do negócio |
-| GET / PUT | /api/empresas/{uuid}/rascunho | rascunho do bot |
+| GET | `/api/auth/csrf` | `{token, headerName}` |
+| POST | `/api/auth/login` | Formulário com `email`, `senha`; 204 ou 401 |
+| GET | `/api/auth/me` | `{email, perfil}`, com `SUPERUSUARIO` ou `USUARIO` |
+| POST | `/api/auth/logout` | Invalida sessão; 204 |
+| GET | `/api/empresas` | Usuário comum vê sua empresa; superusuário vê todas |
+| GET / PUT | `/api/empresas/{id}` | Consulta empresa completa / atualiza dados do negócio |
+| PUT | `/api/empresas/{id}/bot` | Atualiza objeto bot e devolve a empresa completa |
+| PUT | `/api/superusuario/empresas/{id}/chatwoot` | Atualiza identificadores na empresa; exclusivo do superusuário |
+| GET / PUT | `/api/superusuario/prompt-global` | Consulta / atualiza configuração global atual |
+| GET | `/api/superusuario/prompt-global/previa/{empresaId}` | Compõe prompt global e configuração atual da empresa |
+| GET | `/api/superusuario/metricas` | Totais e gráfico; exclusivo do superusuário |
 
-Depois de login e logout, obtenha novo token CSRF. Cookie SESSION é persistente, HttpOnly, SameSite=Lax e Secure em produção; é renovado em cada acesso autenticado. Sessões MongoDB têm intervalo negativo, sem expiração por inatividade; logout elimina a sessão e impede reutilizar o cookie. A credencial do login nunca é devolvida. Sem vínculo e sem privilégio atual de superusuário (ou usuário desativado), consultas e gravações por empresa retornam 404. Não há API de gestão de membros nesta etapa; proprietário e editor podem editar os mesmos campos.
+GET de empresa inclui `bot`, `chatwootAccountId`, `chatwootInboxId` e `revisao`, sem dados de login ou convite. PUT de negócio recebe `nome`, `descricao`, `endereco`, `contato`, `site`, `servicos`, `fusoHorario`, `revisao`. PUT de bot recebe `nome`, `tomVoz`, `usarEmojis`, `instrucoes`, `instrucoesTransferencia`, `revisao`. PUT Chatwoot recebe `chatwootAccountId`, `chatwootInboxId`, `revisao`. IDs Chatwoot são inteiros positivos até o limite seguro de JavaScript; a combinação deve pertencer a uma única empresa.
 
-PUT do negócio requer `nome`, `descricao`, `endereco`, `contato`, `site`, `servicos`, `fusoHorario`, `revisao`. Site vazio é permitido; preenchido exige URL HTTP/HTTPS sem credenciais. Fuso precisa existir em `ZoneId`. PUT de rascunho requer `nomeBot`, `tomVoz` (`cordial`, `formal`, `descontraido`), `usarEmojis`, `instrucoes`, `instrucoesTransferencia`, `revisao`. Campos adicionais do cliente não alteram IDs, empresa, estado, autor ou bot ativo. A revisão é obtida no GET; tentativa de gravar revisão obsoleta retorna 409.
+Esses três editores compartilham a revisão da empresa. Revisão antiga retorna 409. Campos adicionais não concedem privilégio nem alteram empresa, ID ou estado ativo do bot.
 
-Validação retorna 400; CSRF inválido retorna 403; sessão ausente/expirada retorna 401; falhas inesperadas retornam erro sem stack trace ou mensagem interna. Uma gravação só aparece como sucesso após confirmação do servidor. O frontend mantém dados locais após falha recuperável.
+A configuração global recebe `promptGlobal`, `complementarConfiguracoesEmpresa` e `revisao`. Não há endpoint de histórico. A prévia não envia mensagens nem publica configurações no n8n.
 
-A API interna `/internal/bot-context/resolve` será definida e implementada na etapa C. Esta entrega não expõe contextos de produção. As credenciais já existentes das integrações de módulos e métricas são independentes dessa API futura.
+## Empresa e convite
 
-Erros tratados pela API usam o atributo JSON `mensagem`. Os estados do bot são `rascunho` e `publicado`; o papel de proprietário usa `proprietario`.
+- `POST /api/superusuario/empresas`: recebe `nome`, `responsavel`, `email`; cria empresa, usuário pendente e convite embutido em transação; 201. Retorna `empresaId`, `email`, `token`, `expiraEm`, `envioSimulado: true`.
+- `GET /api/superusuario/empresas/{id}/convite`: destinatário, responsável, validade e estado; nunca retorna token/hash.
+- `POST /api/superusuario/empresas/{id}/convite`: renova convite de conta ainda inativa e invalida o token anterior.
+- `POST /api/auth/ativar-convite`: público com CSRF; recebe `token`, `email`, `senha`, `confirmacaoSenha`. Ativação e consumo do convite são uma única atualização condicional do usuário; 204. Token expirado, utilizado ou de outro e-mail é recusado.
 
-O painel do desenvolvedor e a API de eventos estão documentados em [superusuario.md](superusuario.md). Permissão de superusuário é independente dos vínculos de empresa.
+Não há envio de e-mail nesta versão. O token aleatório tem 256 bits, validade de 48 horas e uso único; somente seu SHA-256 fica no banco. O link de teste usa o fragmento `/#convite=...`. Senha e token não são devolvidos em consultas da empresa.
 
-Módulos por empresa, rotas protegidas e integração n8n: [modulos-empresa.md](modulos-empresa.md).
+## Mensagens e gráficos
 
-## Cadastro de empresa e convite simulado
+`POST /api/integracoes/mensagens` exige `X-Token-Metricas` e `Idempotency-Key` (ObjectId de 24 caracteres hexadecimais). Gere o identificador uma vez por mensagem e o reutilize em todas as tentativas. Registre somente depois do envio confirmado:
 
-- `POST /api/superusuario/empresas`: exclusivo do superusuário, com CSRF. Recebe `nome`, `responsavel`, `email`, `moduloCandidatosHabilitado` e `moduloAgendaHabilitado`. Cria empresa, usuário inativo, vínculo de proprietário, rascunho do bot pausado e convite em uma transação. Retorna `empresaId`, `email`, `token`, `expiraEm` e `envioSimulado: true`. E-mail já cadastrado retorna 409; não redefine senhas de contas existentes.
-- `GET /api/superusuario/empresas/{id}/convite`: consulta destinatário e estado (`pendente`, `aceito`, `expirado`, `sem_convite`), sem retornar o token.
-- `POST /api/superusuario/empresas/{id}/convite`: gera outro convite simulado para conta ainda inativa e invalida o anterior. Exige superusuário e CSRF.
-- `POST /api/auth/ativar-convite`: público, protegido por CSRF. Recebe `token`, `email`, `senha` e `confirmacaoSenha`. Exige senha de 6 a 21 caracteres (respeitando também o limite técnico de 72 bytes), confirmação idêntica e convite válido do mesmo e-mail. Ativa somente a conta pendente e consome o token na mesma transação. O cliente entra pelo login normal em seguida.
+```json
+{
+  "empresaId": "UUID da empresa",
+  "enviadoEm": "2026-11-04T15:30:12.450Z"
+}
+```
 
-Não há envio de e-mail nesta versão. A área Negócios mostra o link de teste ao superusuário, explicitamente identificado como simulação. O token aleatório tem 256 bits, validade de 48 horas e uso único; somente seu SHA-256 é persistido. O link usa fragmento (`/#convite=...`), que não vai nos acessos HTTP ao frontend. Trate o link como credencial temporária; não compartilhe fora do destinatário previsto.
+Novo registro retorna 201 com `registrado: true`; repetição idêntica retorna 200 com `registrado: false`; identificador reutilizado com outro conteúdo retorna 409. Data futura, identificador inválido ou campos ausentes retornam 400. Empresa inexistente retorna 404. O token fica somente no backend e na automação, configurado por `METRICS_INGESTION_TOKEN`.
 
-## Vínculo com Chatwoot
+A consulta de métricas aceita `empresaId`, `de`, `ate` (ISO-8601) e `intervalo` (`minute`, `hour`, `day`). `de` é inclusivo e `ate` exclusivo. Sem datas, usa os últimos 15 minutos, 24 horas ou 30 dias, conforme o agrupamento. Período inválido, futuro ou superior a aproximadamente 1.000 intervalos retorna 400.
 
-GET e PUT em `/api/superusuario/empresas/{empresaId}/chatwoot` são exclusivos do superusuário. PUT exige CSRF e recebe `accountId` e `inboxId`, números inteiros positivos. Uma combinação já usada por outra empresa retorna 409. O GET retorna IDs nulos quando ainda não existe vínculo.
+A resposta traz `volume: [{inicio, mensagens}]`, `fusoHorario`, `porEmpresa`, totais de mensagens, último minuto, últimas 24 horas, empresas e usuários ativos, última mensagem e instante de atualização. Não há métricas de recebimentos ou erros. O período filtra o gráfico; os cartões e a tabela mantêm os totais e janelas indicados em seus rótulos.
 
-No webhook atual, os valores vêm de `body.account.id` e `body.inbox.id`. Agora a própria coleção `empresas` guarda `chatwoot_account_id` e `chatwoot_inbox_id` como números. Um índice único parcial impede duplicar a combinação e permite empresas sem configuração. Na inicialização, os vínculos antigos são copiados para empresas ainda não configuradas, sem remover o legado nem sobrescrever configurações novas. O n8n pode localizar a empresa diretamente pelos dois campos. Não foi alterado o workflow do n8n. O vínculo considera uma instalação Chatwoot; múltiplas instalações exigirão também uma identificação de origem.
+Falhas tratadas retornam `{mensagem}`. Sessão ausente retorna 401; CSRF inválido ou privilégio insuficiente retorna 403; empresa fora do acesso retorna 404. Cookie SESSION permanece HttpOnly, SameSite=Lax e Secure em produção, sem expiração por inatividade. Renove CSRF depois de login/logout.

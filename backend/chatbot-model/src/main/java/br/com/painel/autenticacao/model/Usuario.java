@@ -1,30 +1,31 @@
 package br.com.painel.autenticacao.model;
 
 import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.*;
+import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.time.Instant;
 import java.util.UUID;
 
-@org.springframework.data.annotation.TypeAlias("br.com.painel.autenticacao.Usuario")
 @Document(collection = "usuarios")
 public class Usuario {
-    @Id
-    public UUID id;
 
-    public String email;
+    @Id public UUID id;
+
+    public UUID empresaId;
 
     public String nome;
 
-    @Field("criado_em")
-    public java.time.Instant criadoEm;
+    public String email;
 
-    @Field("atualizado_em")
-    public java.time.Instant atualizadoEm;
-
-    @Field("hash_senha")
     public String hashSenha;
+
+    public PerfilUsuario perfil = PerfilUsuario.USUARIO;
 
     public boolean ativo;
 
-    public boolean superusuario;
+    public Convite convite;
+
+    public Instant criadoEm;
+
+    public Instant atualizadoEm;
 }

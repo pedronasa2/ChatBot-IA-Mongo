@@ -4,7 +4,7 @@ import {FormBuilder, Validators} from "@angular/forms";
 import {firstValueFrom} from "rxjs";
 import {UiModule} from "../../../ui/ui.module";
 
-import {RascunhoBot} from "../../classes/model/rascunho.bot";
+import {Empresa} from "../../../empresas/classes/model/empresa";
 import {ConfiguracaoBotService} from "../../services/configuracao.bot.service";
 
 @Component({
@@ -19,15 +19,15 @@ export class BotConfiguracaoComponent {
     private api = inject(ConfiguracaoBotService);
     private destroy = inject(DestroyRef);
     readonly empresaId = input.required<string>();
-    readonly snapshot = input.required<RascunhoBot>();
+    readonly snapshot = input.required<Empresa>();
     readonly superusuario = input(false);
     readonly pendente = output<boolean>();
     readonly ocupado = output<boolean>();
-    readonly salvo = output<RascunhoBot>();
+    readonly salvo = output<Empresa>();
     readonly falha = output<unknown>();
     readonly processando = signal(false);
     readonly bot = this.fb.nonNullable.group({
-        nomeBot: ["", [Validators.required, Validators.maxLength(80)]],
+        nome: ["", [Validators.required, Validators.maxLength(80)]],
         tomVoz: ["cordial", Validators.required],
         usarEmojis: [false],
         instrucoes: ["", Validators.maxLength(10000)],
@@ -45,7 +45,7 @@ export class BotConfiguracaoComponent {
             const id = this.empresaId();
             untracked(() => {
                 if (this.contexto !== id || (!this.bot.dirty && !this.processando())) {
-                    this.bot.reset(atual);
+                    this.bot.reset({...atual.bot, revisao: atual.revisao});
                     this.contexto = id;
                 }
             });
@@ -53,7 +53,7 @@ export class BotConfiguracaoComponent {
     }
 
     descartar(): void {
-        this.bot.reset(this.snapshot());
+        this.bot.reset({...this.snapshot().bot, revisao: this.snapshot().revisao});
         this.pendente.emit(false);
     }
     async salvar(): Promise<void> {
@@ -70,7 +70,7 @@ export class BotConfiguracaoComponent {
         try {
             const atual = await firstValueFrom(this.api.salvar(id, dados));
             if (id !== this.empresaId()) return;
-            this.bot.reset(atual);
+            this.bot.reset({...atual.bot, revisao: atual.revisao});
             this.pendente.emit(false);
             this.salvo.emit(atual);
         } catch (erro) {

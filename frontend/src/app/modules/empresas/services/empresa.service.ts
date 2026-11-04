@@ -15,6 +15,9 @@ export class EmpresaService {
     consultar(empresaId: string): Observable<Empresa> {
         return this.restService.get(`/api/empresas/${empresaId}`, Empresa);
     }
+    salvarChatwoot(empresaId: string, dados: {chatwootAccountId: number; chatwootInboxId: number; revisao: number}): Observable<Empresa> {
+        return this.restService.put(`/api/superusuario/empresas/${empresaId}/chatwoot`, dados, Empresa);
+    }
     salvar(empresaId: string, dados: DadosEmpresa): Observable<Empresa> {
         return this.restService.put(`/api/empresas/${empresaId}`, dados, Empresa);
     }

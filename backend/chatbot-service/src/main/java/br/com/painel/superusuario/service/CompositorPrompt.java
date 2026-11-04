@@ -1,19 +1,20 @@
 package br.com.painel.superusuario.service;
 
+import br.com.painel.configuracoes.model.ConfiguracaoBot;
 import br.com.painel.empresas.model.Empresa;
-import br.com.painel.superusuario.model.vo.ContextoRascunhoPrompt;
+import br.com.painel.superusuario.model.ConfiguracaoSistema;
 import br.com.painel.superusuario.model.vo.PreviaPrompt;
-import br.com.painel.superusuario.model.vo.PromptGlobal;
 
 import java.util.*;
 
 public final class CompositorPrompt {
+
     private CompositorPrompt() {}
 
     public static PreviaPrompt compor(
-            PromptGlobal global, Empresa empresa, ContextoRascunhoPrompt bot) {
-        var texto = new StringBuilder(global.promptSistema());
-        if (global.complementarConfiguracoesEmpresa()) {
+            ConfiguracaoSistema global, Empresa empresa, ConfiguracaoBot bot) {
+        var texto = new StringBuilder(global.promptGlobal);
+        if (global.complementarConfiguracoesEmpresa) {
             texto.append("\n\nCONFIGURAÇÃO COMPLEMENTAR DA EMPRESA\n")
                     .append("As regras globais acima têm prioridade sobre estas configurações.\n");
             for (var campo :
@@ -40,11 +41,11 @@ public final class CompositorPrompt {
                             case "site" -> empresa.site;
                             case "servicos" -> empresa.servicos;
                             case "fuso_horario" -> empresa.fusoHorario;
-                            case "nome_bot" -> bot.nomeBot();
-                            case "tom_voz" -> bot.tomVoz();
-                            case "usar_emojis" -> bot.usarEmojis();
-                            case "instrucoes" -> bot.instrucoes();
-                            case "instrucoes_transferencia" -> bot.instrucoesTransferencia();
+                            case "nome_bot" -> bot.nome;
+                            case "tom_voz" -> bot.tomVoz;
+                            case "usar_emojis" -> bot.usarEmojis;
+                            case "instrucoes" -> bot.instrucoes;
+                            case "instrucoes_transferencia" -> bot.instrucoesTransferencia;
                             default -> throw new IllegalArgumentException(campo.getKey());
                         };
                 if (campo.getKey().equals("usar_emojis")) {

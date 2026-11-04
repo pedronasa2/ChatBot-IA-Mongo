@@ -8,7 +8,6 @@ services:
       MONGODB_URI: ${MONGODB_URI:?Defina a URI de um MongoDB replica set dedicado}
       COOKIE_SECURE: ${COOKIE_SECURE:-true}
       METRICS_INGESTION_TOKEN: ${METRICS_INGESTION_TOKEN:-}
-      MODULES_INTEGRATION_TOKEN: ${MODULES_INTEGRATION_TOKEN:-}
     restart: unless-stopped
   provision:
     profiles: [tools]

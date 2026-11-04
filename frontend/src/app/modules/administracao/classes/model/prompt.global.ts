@@ -1,11 +1,7 @@
 export class PromptGlobal {
-    promptSistema!: string;
-
+    id!: string;
+    promptGlobal!: string;
     complementarConfiguracoesEmpresa!: boolean;
-
-    revisao: number = 0;
-
+    revisao = 0;
     atualizadoEm!: string;
-
-    atualizadoPorEmail!: string | null;
 }

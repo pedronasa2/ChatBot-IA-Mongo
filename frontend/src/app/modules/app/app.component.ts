@@ -1,5 +1,5 @@
 import {HttpErrorResponse} from "@angular/common/http";
-import {Component, HostListener, inject, signal, ViewChild} from "@angular/core";
+import {Component, DestroyRef, HostListener, inject, signal, ViewChild} from "@angular/core";
 import {firstValueFrom} from "rxjs";
 import {SaidaEditoresService} from "../core/security/saida.editores.service";
 import {UiModule} from "../ui/ui.module";
@@ -8,24 +8,16 @@ import {MAT_FORM_FIELD_DEFAULT_OPTIONS} from "@angular/material/form-field";
 
 import {MatSelect} from "@angular/material/select";
 
-import {DestroyRef, effect, untracked} from "@angular/core";
-import {takeUntilDestroyed} from "@angular/core/rxjs-interop";
-import {NavigationEnd, Router, RouterOutlet} from "@angular/router";
+import {Router} from "@angular/router";
 import {LoginComponent} from "../autenticacao/login/login.component";
 import {PainelSuperusuarioComponent} from "../administracao/painel-superusuario/painel.superusuario.component";
-import {RascunhoBot} from "../bot/classes/model/rascunho.bot";
 import {BotConfiguracaoComponent} from "../bot/configuracao/configuracao-bot/configuracao.bot.component";
-import {ConfiguracaoBotService} from "../bot/services/configuracao.bot.service";
-import {VinculoChatwootComponent} from "../chatwoot/configuracao/vinculo-chatwoot/vinculo.chatwoot.component";
+import {ChatwootComponent} from "../chatwoot/configuracao/chatwoot/chatwoot.component";
 import {ConviteAtivacaoComponent} from "../convites/ativacao/convite-ativacao/convite.ativacao.component";
-import {AcessoModulosService} from "../core/security/acesso.modulos.service";
-import {EstadoEdicaoModulo} from "../core/security/estado.edicao.modulo.service";
 import {SessaoService} from "../core/security/sessao.service";
 import {EmpresaCadastroComponent} from "../empresas/cadastro/empresa-cadastro/empresa.cadastro.component";
 import {EmpresaCrudComponent} from "../empresas/cadastro/empresa-crud/empresa.crud.component";
 import {Empresa} from "../empresas/classes/model/empresa";
-import {ModuloEmpresa} from "../empresas/classes/model/modulo.empresa";
-import {PermissoesModulosComponent} from "../empresas/configuracao/permissoes-modulos/permissoes.modulos.component";
 import {EmpresaService} from "../empresas/services/empresa.service";
 
 @Component({
@@ -41,12 +33,10 @@ import {EmpresaService} from "../empresas/services/empresa.service";
         UiModule,
         EmpresaCadastroComponent,
         ConviteAtivacaoComponent,
-        VinculoChatwootComponent,
+        ChatwootComponent,
         LoginComponent,
         EmpresaCrudComponent,
         BotConfiguracaoComponent,
-        PermissoesModulosComponent,
-        RouterOutlet,
         PainelSuperusuarioComponent
     ],
     templateUrl: "./app.component.html",
@@ -64,14 +54,12 @@ export class AppComponent {
     private readonly saida = inject(SaidaEditoresService);
     @ViewChild(EmpresaCrudComponent) editorEmpresa?: EmpresaCrudComponent;
     @ViewChild(BotConfiguracaoComponent) editorBot?: BotConfiguracaoComponent;
-    @ViewChild(PermissoesModulosComponent) editorPermissoes?: PermissoesModulosComponent;
     @ViewChild(EmpresaCadastroComponent) cadastro?: EmpresaCadastroComponent;
-    @ViewChild(VinculoChatwootComponent) chatwoot?: VinculoChatwootComponent;
+    @ViewChild(ChatwootComponent) chatwoot?: ChatwootComponent;
     private outrasAlteracoes(): boolean {
         return (
             this.empresaPendente() ||
             this.botPendente() ||
-            this.permissoesPendentes() ||
             this.promptGlobalPendente() ||
             !!this.cadastro?.form.dirty ||
             !!this.chatwoot?.form.dirty
@@ -81,7 +69,6 @@ export class AppComponent {
         return (
             this.salvandoEmpresa() ||
             this.salvandoBot() ||
-            this.salvandoModulos() ||
             !!this.cadastro?.ocupado() ||
             !!this.chatwoot?.ocupado()
         );
@@ -93,7 +80,6 @@ export class AppComponent {
         if (!window.confirm("Há alterações não salvas. Deseja descartá-las?")) return false;
         this.editorEmpresa?.descartar();
         this.editorBot?.descartar();
-        this.editorPermissoes?.descartar();
         this.cadastro?.descartar();
         this.chatwoot?.descartar();
         this.promptGlobalPendente.set(false);
@@ -101,13 +87,9 @@ export class AppComponent {
     }
     private readonly router = inject(Router);
     private readonly destruidor = inject(DestroyRef);
-    private readonly acessoModulos = inject(AcessoModulosService);
-    private readonly edicaoModulo = inject(EstadoEdicaoModulo);
-    readonly empresaRota = signal("");
-    private consultandoPermissoes = false;
+    private consultandoEmpresa = false;
     private sessao = inject(SessaoService);
     private apiEmpresas = inject(EmpresaService);
-    private apiBot = inject(ConfiguracaoBotService);
     readonly pronto = signal(false);
     readonly autenticado = signal(false);
     readonly processando = signal(false);
@@ -121,84 +103,34 @@ export class AppComponent {
     readonly email = signal("");
     readonly superusuario = signal(false);
     readonly promptGlobalPendente = signal(false);
-    readonly rascunho = signal<RascunhoBot | null>(null);
     readonly empresaPendente = signal(false);
     readonly botPendente = signal(false);
-    readonly permissoesPendentes = signal(false);
     readonly salvandoEmpresa = signal(false);
     readonly salvandoBot = signal(false);
-    readonly salvandoModulos = signal(false);
 
     constructor() {
         this.saida.registrar(() => this.autorizarSaida());
         this.destruidor.onDestroy(() => this.saida.limpar());
-        effect(() => {
-            const verificada = this.acessoModulos.empresaVerificada();
-            if (verificada)
-                untracked(() => {
-                    if (this.empresaSelecionada() === verificada.id && this.empresa()) {
-                        this.empresa.set(verificada);
-                    }
-                });
-        });
-        effect(() => {
-            if (this.acessoModulos.sessaoEncerrada()) {
-                this.acessoModulos.definirSessaoEncerrada(false);
-                void this.tratarFalha(new HttpErrorResponse({status: 401}));
-            }
-            const negacao = this.acessoModulos.negacao();
-            if (negacao) {
-                this.erro.set(negacao);
-                untracked(() => void this.atualizarPermissoesEmpresa());
-            }
-        });
-        this.router.events.pipe(takeUntilDestroyed(this.destruidor)).subscribe((evento) => {
-            if (!(evento instanceof NavigationEnd)) return;
-            const rota = this.moduloNaUrl();
-            this.empresaRota.set(rota?.empresaId || "");
-            if (rota) {
-                this.aba.set(rota.modulo);
-                if (this.autenticado() && this.empresaSelecionada() !== rota.empresaId)
-                    void this.carregarEmpresa(rota.empresaId);
-            } else if (this.aba() === "candidatos" || this.aba() === "agenda") this.aba.set("overview");
-        });
         const intervalo = setInterval(() => {
-            if (!document.hidden) void this.atualizarPermissoesEmpresa();
+            if (!document.hidden) void this.atualizarEmpresa();
         }, 15000);
         this.destruidor.onDestroy(() => clearInterval(intervalo));
         if (this.tokenConvite) this.pronto.set(true);
         else void this.inicializar();
     }
 
-    private moduloNaUrl(): {empresaId: string; modulo: ModuloEmpresa} | null {
-        const resultado = this.router.url.match(/^\/empresas\/([^/]+)\/(candidatos|agenda)(?:[?#]|$)/);
-        return resultado ? {empresaId: resultado[1], modulo: resultado[2] as ModuloEmpresa} : null;
-    }
-
-    abrirModulo(modulo: ModuloEmpresa): void {
-        void this.router.navigate(["/empresas", this.empresaSelecionada(), modulo]);
-    }
-
     @HostListener("window:focus") aoRetornarParaJanela(): void {
-        void this.atualizarPermissoesEmpresa();
+        void this.atualizarEmpresa();
     }
 
-    async atualizarPermissoesEmpresa(): Promise<void> {
-        if (!this.autenticado() || !this.empresa() || this.consultandoPermissoes || this.carregando()) return;
+    async atualizarEmpresa(): Promise<void> {
+        if (!this.autenticado() || !this.empresa() || this.consultandoEmpresa || this.carregando()) return;
         const id = this.empresaSelecionada();
-        this.consultandoPermissoes = true;
+        this.consultandoEmpresa = true;
         try {
             const atual = await firstValueFrom(this.apiEmpresas.consultar(id));
             if (id !== this.empresaSelecionada()) return;
             this.empresa.set(atual);
-            if (
-                (this.aba() === "candidatos" && !atual.moduloCandidatosHabilitado) ||
-                (this.aba() === "agenda" && !atual.moduloAgendaHabilitado)
-            ) {
-                this.edicaoModulo.definir(false);
-                this.erro.set("Este módulo foi desabilitado para a empresa. Os registros foram preservados.");
-                void this.router.navigateByUrl("/");
-            }
         } catch (erro) {
             if (id !== this.empresaSelecionada()) return;
             if (erro instanceof HttpErrorResponse && (erro.status === 401 || erro.status === 404)) {
@@ -207,7 +139,7 @@ export class AppComponent {
                 await this.tratarFalha(erro);
             }
         } finally {
-            this.consultandoPermissoes = false;
+            this.consultandoEmpresa = false;
         }
     }
 
@@ -232,7 +164,7 @@ export class AppComponent {
     private async carregarIdentidade(): Promise<void> {
         const usuario = await this.sessao.identidade();
         this.email.set(usuario.email);
-        this.superusuario.set(usuario.superusuario);
+        this.superusuario.set(usuario.perfil === "SUPERUSUARIO");
     }
 
     async revalidarAcessoSuperusuario(): Promise<void> {
@@ -257,9 +189,8 @@ export class AppComponent {
         this.carregando.set(true);
         try {
             this.empresas.set(await firstValueFrom(this.apiEmpresas.listar()));
-            const solicitada = preferida || this.moduloNaUrl()?.empresaId;
-            const first = this.empresas().find((empresa) => empresa.id === solicitada) || this.empresas()[0];
-            if (first) await this.carregarEmpresa(first.id);
+            const selecionada = this.empresas().find((empresa) => empresa.id === preferida) || this.empresas()[0];
+            if (selecionada) await this.carregarEmpresa(selecionada.id);
         } catch (e) {
             void this.tratarFalha(e);
         } finally {
@@ -277,19 +208,9 @@ export class AppComponent {
         this.erro.set("");
         this.sucesso.set("");
         try {
-            const [c, d] = await Promise.all([
-                firstValueFrom(this.apiEmpresas.consultar(id)),
-                firstValueFrom(this.apiBot.consultar(id))
-            ]);
+            const c = await firstValueFrom(this.apiEmpresas.consultar(id));
             if (this.empresaSelecionada() !== id || geracao !== this.geracaoEmpresa) return;
             this.empresa.set(c);
-            const rota = this.moduloNaUrl();
-            if (rota && rota.empresaId !== id) {
-                const habilitado =
-                    rota.modulo === "candidatos" ? c.moduloCandidatosHabilitado : c.moduloAgendaHabilitado;
-                void this.router.navigateByUrl(habilitado ? `/empresas/${id}/${rota.modulo}` : "/");
-            }
-            this.rascunho.set(d);
         } catch (e) {
             if (geracao === this.geracaoEmpresa) void this.tratarFalha(e);
         } finally {
@@ -298,7 +219,7 @@ export class AppComponent {
     }
 
     temAlteracoes(): boolean {
-        return this.outrasAlteracoes() || this.edicaoModulo.pendente();
+        return this.outrasAlteracoes();
     }
 
     async trocarEmpresa(id: string, seletor?: MatSelect): Promise<void> {
@@ -306,11 +227,7 @@ export class AppComponent {
             if (seletor) seletor.value = this.empresaSelecionada();
             return;
         }
-        const rota = this.moduloNaUrl();
-        if (rota) {
-            const ok = await this.router.navigate(["/empresas", id, rota.modulo]);
-            if (!ok && seletor) seletor.value = this.empresaSelecionada();
-        } else await this.carregarEmpresa(id);
+        await this.carregarEmpresa(id);
     }
 
     trocarAba(aba: string): void {
@@ -335,17 +252,12 @@ export class AppComponent {
     empresaSalva(atual: Empresa): void {
         this.empresa.set(atual);
         this.empresas.update((lista) => lista.map((e) => (e.id === atual.id ? {...e, nome: atual.nome} : e)));
-        this.sucesso.set("Alterações salvas no rascunho.");
+        this.sucesso.set("Alterações salvas.");
     }
 
-    permissoesSalvas(atual: Empresa): void {
+    botSalvo(atual: Empresa): void {
         this.empresa.set(atual);
-        this.sucesso.set("Permissões dos módulos salvas para esta empresa.");
-    }
-
-    botSalvo(atual: RascunhoBot): void {
-        this.rascunho.set(atual);
-        this.sucesso.set("Alterações salvas no rascunho.");
+        this.sucesso.set("Alterações salvas.");
     }
 
     async sair(): Promise<void> {
@@ -372,11 +284,8 @@ export class AppComponent {
         this.aba.set("overview");
         this.empresa.set(null);
         this.empresas.set([]);
-        this.edicaoModulo.definir(false);
-        this.rascunho.set(null);
         this.empresaPendente.set(false);
         this.botPendente.set(false);
-        this.permissoesPendentes.set(false);
     }
 
     async tratarFalha(e: unknown): Promise<void> {

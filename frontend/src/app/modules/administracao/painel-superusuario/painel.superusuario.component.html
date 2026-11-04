@@ -42,13 +42,13 @@
                     <mat-label>System prompt supremo</mat-label>
                     <textarea
                         matInput
-                        formControlName="promptSistema"
+                        formControlName="promptGlobal"
                         rows="12"
                         maxlength="40000"
                         placeholder="Escreva aqui as regras gerais de atendimento, limites e comportamento dos assistentes."
                     ></textarea>
                     <mat-hint
-                        >{{ numero(formularioPrompt.controls.promptSistema.value.length) }} / 40.000
+                        >{{ numero(formularioPrompt.controls.promptGlobal.value.length) }} / 40.000
                         caracteres</mat-hint
                     >
                     <mat-error>Informe as regras globais, até 40.000 caracteres.</mat-error>
@@ -81,7 +81,6 @@
                         <div class="context-detail">
                             <span>Última alteração</span><strong>{{ data(promptSalvo()!.atualizadoEm) }}</strong>
                         </div>
-                        <p class="context-note">{{ promptSalvo()!.atualizadoPorEmail }}</p>
                     }
                 </section>
                 <section class="panel context-card">
@@ -89,12 +88,12 @@
                         <ui-icon name="layers" />
                         <h2>Prévia por empresa</h2>
                     </div>
-                    <p>Confira o prompt salvo junto aos dados e ao rascunho do bot.</p>
+                    <p>Confira o prompt salvo junto aos dados e à configuração do bot.</p>
                     <mat-form-field appearance="outline"
                         ><mat-label>Empresa da prévia</mat-label
                         ><mat-select [value]="empresaPrevia()" (selectionChange)="selecionarPrevia($event.value)">
-                            @for (empresa of metricas()?.porEmpresa || []; track empresa.empresaId) {
-                                <mat-option [value]="empresa.empresaId">{{ empresa.nomeEmpresa }}</mat-option>
+                            @for (empresa of empresas(); track empresa.id) {
+                                <mat-option [value]="empresa.id">{{ empresa.nome }}</mat-option>
                             }
                         </mat-select></mat-form-field
                     >
@@ -120,23 +119,6 @@
                 <pre>{{ texto.promptComposto }}</pre>
             </section>
         }
-        <section class="panel historico-prompts">
-            <h2>Histórico do prompt global</h2>
-            <p class="muted">As 20 versões mais recentes, com data e autoria.</p>
-            @if (historico().length === 0) {
-                <p>Nenhuma alteração registrada ainda.</p>
-            }
-            @for (versao of historico(); track versao.revisao) {
-                <details>
-                    <summary>
-                        <strong>Versão {{ versao.revisao }}</strong
-                        ><span>{{ data(versao.criadoEm) }}</span>
-                    </summary>
-                    <p class="muted">{{ versao.usuarioResponsavelEmail }}</p>
-                    <pre>{{ versao.promptSistema }}</pre>
-                </details>
-            }
-        </section>
     }
     @if (secao() === "metricas") {
         @if (metricas(); as resumo) {
@@ -146,12 +128,12 @@
                     {{ atualizandoMetricas() ? "Atualizando…" : "Atualizar métricas" }}
                 </button>
             </div>
-            @if (resumo.totalMensagens === 0 && resumo.errosUltimas24Horas === 0) {
+            @if (resumo.totalMensagens === 0) {
                 <div class="coleta-pendente">
                     <ui-icon name="link" />
                     <div>
                         <strong>Aguardando eventos do n8n</strong>
-                        <p>Os números começarão a subir quando o fluxo registrar os envios e recebimentos.</p>
+                        <p>Os números começarão a subir quando o fluxo registrar as mensagens enviadas.</p>
                     </div>
                 </div>
             }
@@ -166,17 +148,12 @@
                         {
                             rotulo: "Mensagens nas últimas 24h",
                             valor: resumo.mensagensUltimas24Horas,
-                            descricao: "Recebidas e enviadas com sucesso",
+                            descricao: "Mensagens enviadas com sucesso",
                         },
                         {
                             rotulo: "Total de mensagens",
                             valor: resumo.totalMensagens,
                             descricao: "Desde o início da coleta",
-                        },
-                        {
-                            rotulo: "Erros nas últimas 24h",
-                            valor: resumo.errosUltimas24Horas,
-                            descricao: "Falhas informadas pelo fluxo",
                         },
                     ];
                     track cartao.rotulo
@@ -188,24 +165,44 @@
                     </section>
                 }
             </div>
+            <form class="panel filtros-metricas" [formGroup]="filtros" (ngSubmit)="atualizarMetricas()">
+                <mat-form-field appearance="outline"><mat-label>Empresa do gráfico</mat-label>
+                    <mat-select formControlName="empresaId">
+                        <mat-option value="">Todas as empresas (UTC)</mat-option>
+                        @for (empresa of empresas(); track empresa.id) {
+                            <mat-option [value]="empresa.id">{{empresa.nome}}</mat-option>
+                        }
+                    </mat-select>
+                </mat-form-field>
+                <mat-form-field appearance="outline"><mat-label>Agrupar por</mat-label>
+                    <mat-select formControlName="intervalo">
+                        <mat-option value="minute">Minuto</mat-option><mat-option value="hour">Hora</mat-option><mat-option value="day">Dia</mat-option>
+                    </mat-select>
+                </mat-form-field>
+                <mat-form-field appearance="outline"><mat-label>Início do período</mat-label><input matInput type="datetime-local" formControlName="de"></mat-form-field>
+                <mat-form-field appearance="outline"><mat-label>Fim do período</mat-label><input matInput type="datetime-local" formControlName="ate"></mat-form-field>
+                <button mat-flat-button type="submit" [disabled]="atualizandoMetricas()">Aplicar filtros</button>
+                <p class="muted">Sem datas: últimos 15 minutos, 24 horas ou 30 dias, conforme o agrupamento. Horários dos campos seguem o fuso do navegador.</p>
+            </form>
             <section class="panel grafico-mensagens">
                 <div class="panel-heading">
                     <ui-icon name="chat" />
                     <div>
-                        <h2>Volume por minuto</h2>
-                        <p>Os últimos 15 minutos, incluindo o minuto atual.</p>
+                        <h2>Volume de mensagens</h2>
+                        <p>Contagem por intervalo no período selecionado. Fuso: {{resumo.fusoHorario}}.</p>
                     </div>
                 </div>
+                @if (resumo.volume.length) {
                 <figure>
                     <div
                         class="grafico-barras"
                         role="img"
-                        aria-label="Quantidade de mensagens em cada um dos últimos quinze minutos"
+                        aria-label="Quantidade de mensagens por intervalo"
                     >
-                        @for (volume of resumo.volumePorMinuto; track volume.minuto) {
+                        @for (volume of resumo.volume; track volume.inicio) {
                             <div
                                 class="grafico-coluna"
-                                [attr.title]="hora(volume.minuto) + ': ' + volume.mensagens + ' mensagens'"
+                                [attr.title]="hora(volume.inicio) + ': ' + volume.mensagens + ' mensagens'"
                             >
                                 <span>{{ volume.mensagens }}</span
                                 ><i [style.height.%]="alturaBarra(volume.mensagens)"></i>
@@ -213,10 +210,11 @@
                         }
                     </div>
                     <figcaption>
-                        <span>{{ hora(resumo.volumePorMinuto[0].minuto) }}</span
-                        ><span>{{ hora(resumo.volumePorMinuto[resumo.volumePorMinuto.length - 1].minuto) }}</span>
+                        <span>{{ hora(resumo.volume[0].inicio) }}</span
+                        ><span>{{ hora(resumo.volume[resumo.volume.length - 1].inicio) }}</span>
                     </figcaption>
                 </figure>
+                }
             </section>
             <section class="panel metricas-empresas">
                 <h2>Mensagens por empresa</h2>
@@ -247,12 +245,6 @@
             </section>
             <section class="panel metricas-detalhes">
                 <div>
-                    <span>Recebidas</span><strong>{{ numero(resumo.mensagensRecebidas) }}</strong>
-                </div>
-                <div>
-                    <span>Enviadas</span><strong>{{ numero(resumo.mensagensEnviadas) }}</strong>
-                </div>
-                <div>
                     <span>Empresas</span><strong>{{ numero(resumo.totalEmpresas) }}</strong>
                 </div>
                 <div>
@@ -271,8 +263,7 @@
                         <code>X-Token-Metricas</code>.
                     </p>
                     <p>
-                        Informe a empresa, um ID estável do evento, a origem, a direção, o resultado e a data. Repetir o
-                        mesmo evento não aumenta os números.
+                        Informe somente empresaId e enviadoEm no corpo. Envie um ObjectId estável de 24 caracteres hexadecimais no cabeçalho Idempotency-Key, reutilizado nas tentativas da mesma mensagem. Repetições confirmadas não aumentam a contagem.
                     </p>
                     <p class="context-note">
                         A credencial fica no backend e no n8n. Ela permite registrar eventos, sem acessar o painel ou

@@ -1,6 +1,6 @@
 package br.com.painel.superusuario.resource;
 
-import br.com.painel.superusuario.model.vo.EventoMensagem;
+import br.com.painel.superusuario.model.vo.DadosEventoMensagem;
 import br.com.painel.superusuario.service.RegistroMensagensService;
 
 import jakarta.validation.Valid;
@@ -17,7 +17,9 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/integracoes/mensagens")
 public class IntegracaoMetricasResource {
+
     private final RegistroMensagensService mensagens;
+
     private final String tokenEsperado;
 
     public IntegracaoMetricasResource(
@@ -30,7 +32,8 @@ public class IntegracaoMetricasResource {
     @PostMapping
     public ResponseEntity<Map<String, Boolean>> registrar(
             @RequestHeader(value = "X-Token-Metricas", defaultValue = "") String token,
-            @Valid @RequestBody EventoMensagem evento) {
+            @RequestHeader("Idempotency-Key") String identificador,
+            @Valid @RequestBody DadosEventoMensagem evento) {
         if (tokenEsperado.isBlank()) {
             throw new ResponseStatusException(
                     HttpStatus.SERVICE_UNAVAILABLE,
@@ -42,7 +45,7 @@ public class IntegracaoMetricasResource {
             throw new ResponseStatusException(
                     HttpStatus.UNAUTHORIZED, "Credencial da integração inválida.");
         }
-        boolean registrado = mensagens.registrar(evento);
+        boolean registrado = mensagens.registrar(identificador, evento);
         return ResponseEntity.status(registrado ? HttpStatus.CREATED : HttpStatus.OK)
                 .body(Map.of("registrado", registrado));
     }

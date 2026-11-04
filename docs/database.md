@@ -1,22 +1,25 @@
 # Persistência MongoDB
 
-Configure `spring.mongodb.uri` por `MONGODB_URI`. Use banco exclusivo e UUID no formato standard. Não reutilize o banco de n8n ou Chatwoot. IDs continuam UUID no JSON e UUID binário subtipo 4 no MongoDB. Datas são BSON Date; DTOs mantêm ISO-8601. Campos persistidos usam snake_case.
+As quatro coleções de domínio são `empresas`, `usuarios`, `configuracoes_sistema` e `eventos_mensagens`. O diagrama completo está no [README](../README.md). Os campos usam camelCase. Empresa e usuário mantêm UUID binário subtipo 4; mensagens usam ObjectId. Datas são BSON Date em UTC, representadas por `Instant` no Java e ISO-8601 no HTTP.
 
-Coleções: `usuarios`, `empresas`, `vinculos_usuarios_empresas`, `versoes_configuracoes_bot`, `eventos_auditoria`, `configuracoes_globais`, `historico_prompts_globais`, `eventos_mensagens_atendimento`, `candidatos`, `agendamentos_atendimento`, `provisionamento`, além da coleção técnica do MongoDB Spring Session.
+`Empresa.bot` e `Usuario.convite` são objetos embutidos. Chatwoot usa os campos `chatwootAccountId` e `chatwootInboxId` diretamente em empresa. Cada usuário comum tem uma única `empresaId`; `perfil` é `SUPERUSUARIO` ou `USUARIO`. O superusuário pode ter empresa nula e vê todas as empresas. As políticas consultam os privilégios atuais no banco, inclusive em sessões já abertas.
 
-`ConfiguracaoMongo` cria coleções e índices idempotentes na inicialização. Há unicidade para e-mail, um único superusuário, vínculo usuário/empresa, versão do bot por empresa, um rascunho por empresa, revisão global e evento de origem. MongoDB não oferece foreign keys: referências e acesso por empresa são validados nos serviços. Exclusão de empresas/usuários não foi implementada; scripts externos não devem apagar referências diretamente.
+`configuracoes_sistema` contém o documento `_id: "principal"`. Não há histórico de versões do prompt nem auditoria. Empresa e configuração global têm revisão otimista. Dados do negócio, bot e Chatwoot compartilham a revisão da empresa; gravações obsoletas retornam 409.
 
-Atualizações usam revisão otimista e retornam conflito quando a versão está obsoleta. Configuração e auditoria, prompt e histórico, provisionamento e operações de módulos usam transações MongoDB. É obrigatório replica set ou cluster com suporte a transações. O acesso aos módulos usa uma escrita na empresa na mesma transação, para conflitar com desativação concorrente. Isso serializa operações por empresa e deve ser medido sob carga.
+Índices: e-mail único; empresa do usuário; hash de convite único quando presente; combinação Chatwoot conta/caixa única quando configurada; mensagens por `empresaId + enviadoEm` e por `enviadoEm`. O índice de mensagens por empresa/data não é único. Perfis não têm coleção própria nem limite de um único administrador.
 
-Sessões são persistidas pelo pacote oficial `mongodb-spring-session`, sem expiração por inatividade, preservando o comportamento anterior. Logout invalida a sessão. Inclua sessões nos backups e proteja o banco.
+Cada mensagem registra somente `_id`, `empresaId` e `enviadoEm`. O cabeçalho `Idempotency-Key` deve ser um ObjectId estável por mensagem e é usado como `_id`. Repetir identificador, empresa e instante (precisão de milissegundos) é idempotente; repetir o identificador com dados diferentes retorna 409. Não se usa empresa/data como identificação, pois envios distintos podem ocorrer simultaneamente.
 
-A aplicação inicia sem dados de produção. O provisionamento cria administrador e empresa inicial. Não há importador PostgreSQL nesta entrega. Migrações SQL antigas ficam fora dos recursos executáveis, em `docs/legado-postgres`.
+Métricas usam agregação com `$dateTrunc` e contagem de documentos. O gráfico aceita empresa, início inclusivo, fim exclusivo e agrupamento por minuto/hora/dia. A empresa selecionada determina o fuso do agrupamento; consultas globais usam UTC. Intervalos vazios são preenchidos com zero. Totais gerais e últimas 24 horas continuam tendo suas próprias janelas, independentes do período do gráfico.
 
-As consultas de texto usam regex literal sem diferenciar maiúsculas/minúsculas. Não são busca semântica ou full-text. Métricas agregam contagens por janela e empresa; avaliar custo para bases grandes antes de dimensionar.
+Sessões permanecem em coleção técnica `sessions`, sem expiração por inatividade; logout invalida a sessão. Não foram alterados o conversor nem o formato das sessões existentes. Inclua sessões nos backups.
 
-A coleção `convites_empresas` guarda destinatário, referência da empresa e do usuário, hash do token, validade e uso. Índices únicos protegem a empresa e o hash. Não há TTL: convites vencidos permanecem para consulta de situação. A ativação e o reenvio validam o estado no servidor; não basta saber o e-mail para definir senha.
+## Migração
 
+`ConfiguracaoMongo` cria as quatro coleções e chama `MigracaoModelagemService`. A conversão dos documentos acontece em transação. Só após sucesso e criação dos índices são removidas as coleções anteriores: vínculos, versões do bot, convites, configurações globais, histórico do prompt, auditoria, integrações Chatwoot, eventos antigos e marcador de provisionamento.
 
-A organização Java agora separa os módulos `chatbot-model`, `chatbot-repository`, `chatbot-service`, `chatbot-resource` e `chatbot-boot`. Essa reorganização não migra coleções: aliases preservam os `_class` anteriores, e os testes exercitam a leitura e nova gravação desses documentos. O bootstrap de índices e a migração idempotente de vínculos Chatwoot existentes foram mantidos. Mudanças futuras de dados/índices precisam de passos próprios de migração; reorganizar pacotes não os substitui.
+Preservam-se credenciais, usuários, empresas, configuração atual do bot, convite atual e prompt atual. Superusuários ficam com empresa nula; usuários comuns recebem a empresa do vínculo. Múltiplos vínculos para usuário comum, empresa inválida ou múltiplos convites interrompem a conversão. Dos eventos anteriores, somente enviados com sucesso são convertidos. UUIDs de eventos antigos são transformados em ObjectIds determinísticos para permitir nova execução sem duplicação.
 
-A consulta de métricas usa uma agregação de eventos, uma leitura de empresas e uma contagem de usuários ativos. A comparação com a implementação anterior conserva janelas, 15 buckets, empresas sem eventos, ordenação, separação de erros e exclusão de eventos ainda futuros. No cenário de teste de três empresas, os comandos reais ao Mongo passaram de 31 para 3; não foi realizado benchmark de latência.
+Faça backup completo antes de iniciar a nova versão e mantenha instâncias antigas paradas durante e após a migração. A conversão é idempotente, mas não reverte automaticamente dados para o formato antigo. Restaurar a versão antiga exige restaurar também o backup correspondente.
+
+O script `infra/migrar-modelagem.sh` executa a migração sem servidor HTTP. Usa a mesma configuração local do backend. Não imprime senha nem token. É obrigatório MongoDB replica set ou cluster com transações. Não existe migração do PostgreSQL neste fluxo.

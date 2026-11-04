@@ -1,3 +1,4 @@
+import {ConfiguracaoBot} from "../../../bot/classes/model/configuracao.bot";
 export class Empresa {
     id!: string;
 
@@ -19,11 +20,9 @@ export class Empresa {
 
     chatwootInboxId!: number | null;
 
-    botAtivo!: boolean;
+    bot!: ConfiguracaoBot;
 
-    moduloCandidatosHabilitado!: boolean;
 
-    moduloAgendaHabilitado!: boolean;
 
     revisao: number = 0;
 

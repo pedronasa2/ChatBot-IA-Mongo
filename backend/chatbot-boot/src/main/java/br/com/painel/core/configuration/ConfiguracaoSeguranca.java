@@ -11,6 +11,7 @@ import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
 public class ConfiguracaoSeguranca {
+
     @Bean
     PasswordEncoder passwords() {
         return new BCryptPasswordEncoder(12);
@@ -32,7 +33,7 @@ public class ConfiguracaoSeguranca {
     }
 
     @Bean
-    @Profile("!provision")
+    @Profile("!provision & !migracao")
     SecurityFilterChain security(HttpSecurity http) throws Exception {
         http.authorizeHttpRequests(
                         a ->
@@ -41,7 +42,6 @@ public class ConfiguracaoSeguranca {
                                                 "/api/auth/login",
                                                 "/api/auth/ativar-convite",
                                                 "/api/integracoes/mensagens",
-                                                "/api/integracoes/empresas/**",
                                                 "/error")
                                         .permitAll()
                                         .requestMatchers("/api/**")
@@ -62,11 +62,7 @@ public class ConfiguracaoSeguranca {
                                                             + " 'self'; connect-src 'self';"
                                                             + " frame-ancestors 'none'; base-uri"
                                                             + " 'self'; form-action 'self'")))
-                .csrf(
-                        c ->
-                                c.ignoringRequestMatchers(
-                                        "/api/integracoes/mensagens",
-                                        "/api/integracoes/empresas/**"))
+                .csrf(c -> c.ignoringRequestMatchers("/api/integracoes/mensagens"))
                 .formLogin(
                         f ->
                                 f.loginProcessingUrl("/api/auth/login")
