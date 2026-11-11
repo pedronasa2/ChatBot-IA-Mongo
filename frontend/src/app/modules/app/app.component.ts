@@ -1,5 +1,5 @@
 import {HttpErrorResponse} from "@angular/common/http";
-import {Component, DestroyRef, effect, HostListener, inject, signal, ViewChild} from "@angular/core";
+import {Component, DestroyRef, HostListener, inject, signal, ViewChild} from "@angular/core";
 import {firstValueFrom} from "rxjs";
 import {SaidaEditoresService} from "../core/security/saida.editores.service";
 import {UiModule} from "../ui/ui.module";
@@ -109,23 +109,6 @@ export class AppComponent {
     readonly salvandoBot = signal(false);
 
     constructor() {
-        effect(() => {
-            const empresa = this.autenticado() ? this.empresa() : null;
-            const primaria = empresa?.corPrimaria || "#0d3b4c";
-            const secundaria = empresa?.corSecundaria || "#525e7f";
-            const contraste = (cor: string) => {
-                const rgb = [1, 3, 5].map(i => parseInt(cor.slice(i, i + 2), 16) / 255)
-                    .map(c => c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
-                return rgb[0] * 0.2126 + rgb[1] * 0.7152 + rgb[2] * 0.0722 > 0.179 ? "#000000" : "#ffffff";
-            };
-            const style = document.documentElement.style;
-            style.setProperty("--primary", primaria);
-            style.setProperty("--mat-sys-primary", primaria);
-            style.setProperty("--mat-sys-on-primary", contraste(primaria));
-            style.setProperty("--mat-sys-secondary", secundaria);
-            style.setProperty("--mat-sys-on-secondary", contraste(secundaria));
-            style.setProperty("--secondary", secundaria);
-        });
         this.saida.registrar(() => this.autorizarSaida());
         this.destruidor.onDestroy(() => this.saida.limpar());
         const intervalo = setInterval(() => {

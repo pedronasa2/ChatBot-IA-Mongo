@@ -11,10 +11,7 @@
     <div class="shell" [class.overview-shell]="aba() === 'overview'" [class.com-superusuario]="superusuario()">
         <header class="app-header">
             <a class="brand" href="/"
-                >@if (empresa()?.fotoEmpresa) {
-                    <img class="foto-marca" [src]="empresa()!.fotoEmpresa" [alt]="empresa()!.nome" />
-                } @else { <span class="brand-mark"><ui-icon name="chat" /></span> }
-                <span class="nome-marca">{{ empresa()?.nome || 'AtendeFlow' }}</span></a
+                ><span class="brand-mark"><ui-icon name="chat" /></span>AtendeFlow</a
             >
             @if (superusuario()) {
                 <div class="empresa-control">

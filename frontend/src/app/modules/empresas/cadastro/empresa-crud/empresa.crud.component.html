@@ -43,24 +43,6 @@
             <mat-hint>Use um identificador de fuso, como America/Sao_Paulo. </mat-hint>
             <mat-error>Informe um fuso horário válido.</mat-error>
         </mat-form-field>
-        <section class="identidade-visual" aria-label="Identidade visual">
-            <h2>Identidade visual</h2>
-            <p>Personalize as cores e a foto da sua empresa neste painel.</p>
-            <div class="field-grid">
-                <label>Cor principal <input type="color" formControlName="corPrimaria" /></label>
-                <label>Cor secundária <input type="color" formControlName="corSecundaria" /></label>
-            </div>
-            <button mat-button type="button" (click)="restaurarCores()" [disabled]="processando()">Restaurar cores padrão</button>
-            @if (dadosEmpresa.controls.fotoEmpresa.value) {
-                <img class="foto-preview" [src]="dadosEmpresa.controls.fotoEmpresa.value" alt="Foto da empresa" />
-            }
-            <label>Foto da empresa
-                <input type="file" accept="image/png,image/jpeg" (change)="selecionarFoto($event)" [disabled]="processando()" />
-            </label>
-            <p>PNG ou JPEG, até 5 MB. A imagem será reduzida automaticamente.</p>
-            @if (erroFoto()) { <p role="alert">{{ erroFoto() }}</p> }
-            <button mat-button type="button" (click)="removerFoto()" [disabled]="processando() || !dadosEmpresa.controls.fotoEmpresa.value">Remover foto</button>
-        </section>
         <div class="salvar-row">
             <span class="muted" role="status">{{
                 dadosEmpresa.dirty ? "Há alterações não salvas." : "Dados salvos."

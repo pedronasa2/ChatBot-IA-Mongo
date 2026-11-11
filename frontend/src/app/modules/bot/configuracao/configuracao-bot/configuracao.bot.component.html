@@ -22,7 +22,6 @@
             <mat-radio-group formControlName="tomVoz" aria-labelledby="tomVoz-label" class="tomVoz-options">
                 @for (
                     tomVoz of [
-                        {value: "direto", title: "Direto ao ponto", icon: "chat", descricao: "Respostas curtas e objetivas."},
                         {
                             value: "cordial",
                             title: "Cordial",
@@ -56,33 +55,17 @@
                 }
             </mat-radio-group>
         </section>
-        <mat-checkbox formControlName="modoGuiado">Usar configuração guiada</mat-checkbox>
-        <p>Responda com suas palavras. Você pode escrever “Não se aplica”, “Ainda não definido” ou deixar em branco.</p>
-        @if (bot.controls.modoGuiado.value) {
-            <section formGroupName="questionario" class="questionario">
-                <h2>Conte como sua empresa atende</h2>
-                <p>Nome, descrição e produtos já vêm de Meu negócio. Não precisa repetir.</p>
-                <mat-form-field appearance="outline"><mat-label>Quais formas de pagamento aceita?</mat-label><textarea matInput formControlName="pagamentos" maxlength="1500" placeholder="Ex.: Pix, dinheiro e cartão em até 3 vezes."></textarea></mat-form-field>
-                <mat-form-field appearance="outline"><mat-label>Como funciona a entrega ou retirada?</mat-label><textarea matInput formControlName="entrega" maxlength="1500" placeholder="Ex.: Retirada na loja. Entrega na cidade com taxa sob consulta."></textarea></mat-form-field>
-                <mat-form-field appearance="outline"><mat-label>Quais são os horários de atendimento?</mat-label><textarea matInput formControlName="horarios" maxlength="1500" placeholder="Ex.: Segunda a sexta, das 9h às 18h."></textarea></mat-form-field>
-                <mat-form-field appearance="outline"><mat-label>O que os clientes costumam perguntar?</mat-label><textarea matInput formControlName="perguntasFrequentes" maxlength="3000" rows="4" placeholder="Pergunta: Posso trocar? Resposta: Informe aqui a política da loja."></textarea></mat-form-field>
-                <mat-form-field appearance="outline"><mat-label>Quando o bot deve chamar uma pessoa?</mat-label><textarea matInput formControlName="chamarPessoa" maxlength="1500" placeholder="Ex.: Quando o cliente pedir, houver reclamação ou a resposta não estiver cadastrada."></textarea></mat-form-field>
-                <p>As respostas serão organizadas nas instruções do bot ao salvar. O encaminhamento depende do fluxo de atendimento.</p>
-            </section>
-        }
         <mat-checkbox formControlName="usarEmojis">Permitir uso de emojis </mat-checkbox>
         <mat-form-field appearance="outline">
             <mat-label>Instruções adicionais </mat-label>
             <textarea matInput formControlName="instrucoes" rows="5" maxlength="10000"></textarea>
-            <mat-hint>Opcional: acrescente alguma orientação que não apareceu nas perguntas. </mat-hint>
+            <mat-hint>Informe preferências de atendimento e detalhes úteis. </mat-hint>
         </mat-form-field>
-        @if (!bot.controls.modoGuiado.value) {
         <mat-form-field appearance="outline">
             <mat-label>Encaminhar para uma pessoa </mat-label>
             <textarea matInput formControlName="instrucoesTransferencia" rows="3" maxlength="5000"></textarea>
             <mat-hint>A transferência será implementada em uma etapa posterior. </mat-hint>
         </mat-form-field>
-        }
         <div class="salvar-row">
             <span class="muted" role="status">{{
                 bot.dirty
@@ -95,11 +78,6 @@
         </div>
     </form>
     <div class="context-column">
-        <section class="panel context-card">
-            <h2>Prévia das orientações</h2>
-            <p>Confira o que será usado no atendimento. Esta é uma prévia das configurações, não uma resposta da IA.</p>
-            <p class="previa-orientacoes">{{ previaOrientacoes() }}</p>
-        </section>
         <section class="panel context-card">
             <div class="panel-heading">
                 <ui-icon name="layers" />

@@ -32,9 +32,6 @@ export class EmpresaCrudComponent {
         site: ["", [Validators.maxLength(500), Validators.pattern(/^(https?:\/\/[^\s]+)?$/)]],
         servicos: ["", Validators.maxLength(10000)],
         fusoHorario: ["America/Sao_Paulo", [Validators.required, Validators.maxLength(80)]],
-        corPrimaria: ["#0d3b4c", [Validators.required, Validators.pattern(/^#[0-9a-fA-F]{6}$/)]],
-        corSecundaria: ["#525e7f", [Validators.required, Validators.pattern(/^#[0-9a-fA-F]{6}$/)]],
-        fotoEmpresa: [""],
         revisao: [0]
     });
     private contexto = "";
@@ -52,45 +49,6 @@ export class EmpresaCrudComponent {
                 }
             });
         });
-    }
-    readonly erroFoto = signal("");
-    restaurarCores(): void {
-        this.dadosEmpresa.patchValue({corPrimaria: "#0d3b4c", corSecundaria: "#525e7f"});
-        this.marcarAlteracao();
-    }
-    removerFoto(): void {
-        this.dadosEmpresa.controls.fotoEmpresa.setValue("");
-        this.marcarAlteracao();
-    }
-    private marcarAlteracao(): void {
-        this.dadosEmpresa.markAsDirty();
-        this.pendente.emit(true);
-    }
-    async selecionarFoto(event: Event): Promise<void> {
-        const input = event.target as HTMLInputElement;
-        const arquivo = input.files?.[0];
-        input.value = "";
-        if (!arquivo) return;
-        this.erroFoto.set("");
-        if (!["image/png", "image/jpeg"].includes(arquivo.type) || arquivo.size > 5 * 1024 * 1024) {
-            this.erroFoto.set("Escolha uma imagem PNG ou JPEG de até 5 MB.");
-            return;
-        }
-        const empresaId = this.empresa().id;
-        try {
-            const bitmap = await createImageBitmap(arquivo);
-            const canvas = document.createElement("canvas");
-            const escala = Math.min(1, 256 / Math.max(bitmap.width, bitmap.height));
-            canvas.width = Math.max(1, Math.round(bitmap.width * escala));
-            canvas.height = Math.max(1, Math.round(bitmap.height * escala));
-            canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-            bitmap.close();
-            if (empresaId !== this.empresa().id || this.processando()) return;
-            this.dadosEmpresa.controls.fotoEmpresa.setValue(canvas.toDataURL("image/png"));
-            this.marcarAlteracao();
-        } catch {
-            this.erroFoto.set("Não foi possível abrir essa imagem. Escolha outro arquivo.");
-        }
     }
     descartar(): void {
         this.dadosEmpresa.reset(this.empresa());

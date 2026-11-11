@@ -16,10 +16,6 @@ public class Empresa {
 
     public String nome;
 
-    public String corPrimaria = "#0d3b4c";
-    public String corSecundaria = "#525e7f";
-    public String fotoEmpresa = "";
-
     public String descricao = "";
 
     public String endereco = "";
