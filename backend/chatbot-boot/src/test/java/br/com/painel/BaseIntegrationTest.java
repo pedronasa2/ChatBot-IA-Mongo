@@ -205,6 +205,45 @@ class BaseIntegrationTest {
     }
 
     @Test
+    void questionarioGeraInstrucoesEPreservaTextoLivreComIsolamento() throws Exception {
+        var dados = dadosBot(0).append("modoGuiado", true).append("tomVoz", "direto")
+            .append("questionario", new Document("pagamentos", "Pix e cartão")
+                .append("entrega", "Retirada na loja").append("chamarPessoa", "Quando solicitado"));
+        mvc.perform(put("/api/empresas/" + other + "/bot").cookie(session).with(csrf())
+                .contentType("application/json").content(json(dados)))
+            .andExpect(status().isNotFound());
+        mvc.perform(put("/api/empresas/" + own + "/bot").cookie(session).with(csrf())
+                .contentType("application/json").content(json(dados)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.bot.instrucoesLivres").value("Cumprimente"))
+            .andExpect(jsonPath("$.bot.instrucoes", org.hamcrest.Matchers.containsString("Pagamento: Pix e cartão")))
+            .andExpect(jsonPath("$.bot.instrucoesTransferencia").value("Quando solicitado"));
+        mvc.perform(get("/api/empresas/" + own).cookie(session))
+            .andExpect(jsonPath("$.bot.questionario.pagamentos").value("Pix e cartão"));
+        dados.append("modoGuiado", false).append("revisao", 1);
+        mvc.perform(put("/api/empresas/" + own + "/bot").cookie(session).with(csrf())
+                .contentType("application/json").content(json(dados)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.bot.instrucoes").value("Cumprimente"))
+            .andExpect(jsonPath("$.bot.questionario.pagamentos").value("Pix e cartão"));
+    }
+
+    @Test
+    void rejeitaQuestionarioExcessivoENaoInventaRespostasVazias() throws Exception {
+        var dados = dadosBot(0).append("modoGuiado", true)
+            .append("questionario", new Document("pagamentos", "x".repeat(1501)));
+        mvc.perform(put("/api/empresas/" + own + "/bot").cookie(session).with(csrf())
+                .contentType("application/json").content(json(dados)))
+            .andExpect(status().isBadRequest());
+        dados.append("questionario", new Document());
+        mvc.perform(put("/api/empresas/" + own + "/bot").cookie(session).with(csrf())
+                .contentType("application/json").content(json(dados)))
+            .andExpect(status().isOk());
+        var texto = mongo.findById(own, Empresa.class).bot.instrucoes;
+        assertThat(texto).contains("Não invente").doesNotContain("Pagamento:", "Entrega e retirada:");
+    }
+
+    @Test
     void dadosInvalidosNaoAlteramEmpresa() throws Exception {
         var dados = dadosEmpresa(0).append("fusoHorario", "Inválido");
         mvc.perform(

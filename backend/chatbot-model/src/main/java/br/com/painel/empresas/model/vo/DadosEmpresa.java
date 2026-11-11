@@ -13,4 +13,7 @@ public record DadosEmpresa(
         @NotNull @Size(max = 500) String site,
         @NotNull @Size(max = 10000) String servicos,
         @NotBlank @Size(max = 80) String fusoHorario,
+        @Pattern(regexp = "#[0-9a-fA-F]{6}") String corPrimaria,
+        @Pattern(regexp = "#[0-9a-fA-F]{6}") String corSecundaria,
+        @Size(max = 350000) String fotoEmpresa,
         @Min(0) long revisao) {}

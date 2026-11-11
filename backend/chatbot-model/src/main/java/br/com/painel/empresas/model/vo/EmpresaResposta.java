@@ -9,6 +9,9 @@ import java.util.UUID;
 public record EmpresaResposta(
         UUID id,
         String nome,
+        String corPrimaria,
+        String corSecundaria,
+        String fotoEmpresa,
         String descricao,
         String endereco,
         String contato,
@@ -26,6 +29,9 @@ public record EmpresaResposta(
         return new EmpresaResposta(
                 e.id,
                 e.nome,
+                e.corPrimaria,
+                e.corSecundaria,
+                e.fotoEmpresa,
                 e.descricao,
                 e.endereco,
                 e.contato,

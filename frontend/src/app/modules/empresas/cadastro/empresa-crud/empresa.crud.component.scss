@@ -4,3 +4,7 @@
 :host([hidden]) {
     display: none;
 }
+
+.identidade-visual { display: grid; gap: 12px; margin: 24px 0; }
+.identidade-visual label { display: grid; gap: 8px; }
+.foto-preview { width: 80px; height: 80px; object-fit: cover; border-radius: 50%; }

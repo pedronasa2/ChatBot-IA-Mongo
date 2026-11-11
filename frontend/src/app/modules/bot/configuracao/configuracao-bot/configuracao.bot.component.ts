@@ -32,6 +32,12 @@ export class BotConfiguracaoComponent {
         usarEmojis: [false],
         instrucoes: ["", Validators.maxLength(10000)],
         instrucoesTransferencia: ["", Validators.maxLength(5000)],
+        modoGuiado: [false],
+        questionario: this.fb.nonNullable.group({
+            pagamentos: ["", Validators.maxLength(1500)], entrega: ["", Validators.maxLength(1500)],
+            horarios: ["", Validators.maxLength(1500)], perguntasFrequentes: ["", Validators.maxLength(3000)],
+            chamarPessoa: ["", Validators.maxLength(1500)]
+        }),
         revisao: [0]
     });
     private contexto = "";
@@ -45,15 +51,28 @@ export class BotConfiguracaoComponent {
             const id = this.empresaId();
             untracked(() => {
                 if (this.contexto !== id || (!this.bot.dirty && !this.processando())) {
-                    this.bot.reset({...atual.bot, revisao: atual.revisao});
+                    this.bot.reset({...atual.bot, instrucoes: atual.bot.instrucoesLivres ?? atual.bot.instrucoes, instrucoesTransferencia: atual.bot.instrucoesTransferenciaLivres ?? atual.bot.instrucoesTransferencia, revisao: atual.revisao});
                     this.contexto = id;
                 }
             });
         });
     }
 
+    previaOrientacoes(): string {
+        const dados = this.bot.getRawValue();
+        if (!dados.modoGuiado) return dados.instrucoes || "Nenhuma instrução adicional definida.";
+        const q = dados.questionario;
+        return [
+            `Use os dados de ${this.snapshot().nome} já cadastrados em Meu negócio. Não invente informações ausentes.`,
+            `Estilo: ${dados.tomVoz}. Emojis: ${dados.usarEmojis ? "permitidos" : "não usar"}.`,
+            ...[["Pagamento", q.pagamentos], ["Entrega e retirada", q.entrega], ["Horários", q.horarios],
+                ["Perguntas frequentes", q.perguntasFrequentes], ["Quando chamar uma pessoa", q.chamarPessoa]]
+                .filter(([, valor]) => valor?.trim()).map(([nome, valor]) => `${nome}: ${valor.trim()}`),
+            dados.instrucoes ? `Orientações adicionais: ${dados.instrucoes}` : ""
+        ].filter(Boolean).join("\n\n");
+    }
     descartar(): void {
-        this.bot.reset({...this.snapshot().bot, revisao: this.snapshot().revisao});
+        this.bot.reset({...this.snapshot().bot, instrucoes: this.snapshot().bot.instrucoesLivres ?? this.snapshot().bot.instrucoes, instrucoesTransferencia: this.snapshot().bot.instrucoesTransferenciaLivres ?? this.snapshot().bot.instrucoesTransferencia, revisao: this.snapshot().revisao});
         this.pendente.emit(false);
     }
     async salvar(): Promise<void> {
@@ -70,7 +89,7 @@ export class BotConfiguracaoComponent {
         try {
             const atual = await firstValueFrom(this.api.salvar(id, dados));
             if (id !== this.empresaId()) return;
-            this.bot.reset({...atual.bot, revisao: atual.revisao});
+            this.bot.reset({...atual.bot, instrucoes: atual.bot.instrucoesLivres ?? atual.bot.instrucoes, instrucoesTransferencia: atual.bot.instrucoesTransferenciaLivres ?? atual.bot.instrucoesTransferencia, revisao: atual.revisao});
             this.pendente.emit(false);
             this.salvo.emit(atual);
         } catch (erro) {

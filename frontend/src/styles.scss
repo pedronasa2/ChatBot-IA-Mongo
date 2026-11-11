@@ -189,7 +189,7 @@ ui-icon svg {
     background: #d69a35;
 }
 .badge.draft {
-    color: #525e7f;
+    color: var(--secondary, #525e7f);
     background: #eef0f6;
 }
 .badge.draft i {
@@ -224,7 +224,7 @@ ui-icon svg {
     border-left: 1px solid var(--line);
 }
 .empresa-control > ui-icon {
-    color: #525e7f;
+    color: var(--secondary, #525e7f);
     width: 17px;
     height: 17px;
 }
@@ -328,7 +328,7 @@ nav .active ui-icon {
 }
 .sidebar-note > ui-icon {
     margin-bottom: 12px;
-    color: #525e7f;
+    color: var(--secondary, #525e7f);
 }
 .sidebar-note strong {
     display: block;
@@ -492,7 +492,7 @@ main {
     margin-bottom: 20px;
 }
 .next-heading > ui-icon {
-    color: #525e7f;
+    color: var(--secondary, #525e7f);
     width: 19px;
     height: 19px;
 }
@@ -527,7 +527,7 @@ main {
     flex-shrink: 0;
     border-radius: 8px;
     background: #f0f2f5;
-    color: #525e7f;
+    color: var(--secondary, #525e7f);
     font-size: 11px;
     font-weight: 650;
 }
@@ -552,7 +552,7 @@ main {
 .panel-heading > ui-icon {
     width: 19px;
     height: 19px;
-    color: #525e7f;
+    color: var(--secondary, #525e7f);
 }
 .panel-heading > div {
     flex: 1;
@@ -659,7 +659,7 @@ mat-erro {
 }
 .tomVoz-option.empresaSelecionada {
     background: #e7eff3;
-    border-color: #0d3b4c;
+    border-color: var(--primary);
 }
 .tomVoz-option .mdc-form-field {
     align-items: flex-start;
@@ -678,7 +678,7 @@ mat-erro {
     gap: 8px;
 }
 .tomVoz-copy ui-icon {
-    color: #525e7f;
+    color: var(--secondary, #525e7f);
     width: 18px;
     height: 18px;
 }

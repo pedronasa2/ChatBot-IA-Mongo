@@ -1,3 +1,11 @@
 :host {
     display: block;
 }
+
+.foto-marca { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; }
+.sidebar .nav-label { color: var(--secondary); }
+
+.app-header .brand { min-width: 0; max-width: 260px; }
+.nome-marca { overflow: hidden; text-overflow: ellipsis; }
+.foto-marca, .brand-mark { flex-shrink: 0; }
+.brand-mark { color: var(--mat-sys-on-primary); }

@@ -5,3 +5,7 @@
 :host([hidden]) {
     display: none;
 }
+
+.questionario { display: grid; gap: 16px; }
+
+.previa-orientacoes { white-space: pre-wrap; overflow-wrap: anywhere; }

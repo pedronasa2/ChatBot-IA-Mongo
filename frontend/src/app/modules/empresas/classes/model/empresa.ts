@@ -3,6 +3,9 @@ export class Empresa {
     id!: string;
 
     nome!: string;
+    corPrimaria: string = "#0d3b4c";
+    corSecundaria: string = "#525e7f";
+    fotoEmpresa: string = "";
 
     descricao!: string;
 

@@ -65,6 +65,12 @@ public class EmpresaService {
                     ErroNegocio.CONFLITO,
                     "Dados alterados em outra sessão. Recarregue antes de salvar.");
         }
+        if (dados.fotoEmpresa() != null) {
+            validarFoto(dados.fotoEmpresa());
+            empresa.fotoEmpresa = dados.fotoEmpresa();
+        }
+        if (dados.corPrimaria() != null) empresa.corPrimaria = dados.corPrimaria();
+        if (dados.corSecundaria() != null) empresa.corSecundaria = dados.corSecundaria();
         empresa.nome = dados.nome().strip();
         empresa.descricao = dados.descricao();
         empresa.endereco = dados.endereco();
@@ -75,6 +81,31 @@ public class EmpresaService {
         empresa.atualizadoEm = Instant.now();
         empresas.save(empresa);
         return EmpresaResposta.de(empresa);
+    }
+
+    static void validarFoto(String foto) {
+        if (foto.isEmpty()) return;
+        try {
+            if (!foto.matches("data:image/(png|jpeg);base64,[A-Za-z0-9+/=]+")) throw new IllegalArgumentException();
+            byte[] bytes = Base64.getDecoder().decode(foto.substring(foto.indexOf(',') + 1));
+            if (bytes.length > 262144) throw new IllegalArgumentException();
+            try (var input = javax.imageio.ImageIO.createImageInputStream(new java.io.ByteArrayInputStream(bytes))) {
+                var leitores = javax.imageio.ImageIO.getImageReaders(input);
+                if (!leitores.hasNext()) throw new IllegalArgumentException();
+                var leitor = leitores.next();
+                try {
+                    leitor.setInput(input);
+                    String formato = leitor.getFormatName().toLowerCase(Locale.ROOT);
+                    if (!Set.of("png", "jpeg").contains(formato)
+                            || !foto.startsWith("data:image/" + formato + ";")
+                            || leitor.getWidth(0) > 512 || leitor.getHeight(0) > 512
+                            || leitor.read(0) == null) throw new IllegalArgumentException();
+                } finally { leitor.dispose(); }
+            }
+        } catch (Exception erro) {
+            throw new NegocioException(ErroNegocio.DADOS_INVALIDOS,
+                    "Use uma foto PNG ou JPEG de até 512 × 512 pixels e 256 KB.");
+        }
     }
 
     public EmpresaResposta salvarChatwoot(UUID id, DadosChatwoot dados, String email) {
