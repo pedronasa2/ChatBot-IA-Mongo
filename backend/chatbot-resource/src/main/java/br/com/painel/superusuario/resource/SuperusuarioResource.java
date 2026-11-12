@@ -11,6 +11,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
 import java.time.Instant;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -60,5 +62,18 @@ public class SuperusuarioResource {
             @RequestParam(required = false) UUID empresaId) {
         acesso.exigir(usuario);
         return metricas.consultar(de, ate, intervalo, empresaId);
+    }
+
+    @GetMapping("/metricas/mensagens-semana")
+    public Map<String, Long> contarMensagensNaSemana(
+            Principal usuario, @RequestParam String nomeEmpresa) {
+        acesso.exigir(usuario);
+        return Map.of("totalMensagens", metricas.contarMensagensNaSemana(nomeEmpresa));
+    }
+
+    @GetMapping("/metricas/situacao-equipes")
+    public List<SituacaoEquipeEmpresa> situacaoEquipes(Principal usuario) {
+        acesso.exigir(usuario);
+        return metricas.situacaoEquipes();
     }
 }

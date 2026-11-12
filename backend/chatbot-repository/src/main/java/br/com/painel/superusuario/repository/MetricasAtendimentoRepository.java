@@ -22,6 +22,28 @@ public class MetricasAtendimentoRepository {
         this.mongo = mongo;
     }
 
+    public List<SituacaoEquipeEmpresa> situacaoEquipes() {
+        var funcionarios = List.of(
+                new Document("$match", new Document("perfil", "USUARIO")),
+                new Document("$project", new Document("_id", 0).append("ativo", 1)));
+        var ativos = new Document("$filter", new Document("input", "$funcionarios")
+                .append("as", "funcionario")
+                .append("cond", new Document("$eq", List.of("$$funcionario.ativo", true))));
+        var pipeline = Aggregation.newAggregation(
+                c -> new Document("$lookup", new Document("from", "usuarios")
+                        .append("localField", "_id").append("foreignField", "empresaId")
+                        .append("pipeline", funcionarios).append("as", "funcionarios")),
+                c -> new Document("$project", new Document("_id", 0)
+                        .append("empresaId", "$_id").append("nomeEmpresa", "$nome")
+                        .append("totalFuncionarios", new Document("$size", "$funcionarios"))
+                        .append("ativos", new Document("$size", ativos))),
+                c -> new Document("$set", new Document("inativos",
+                        new Document("$subtract", List.of("$totalFuncionarios", "$ativos")))),
+                c -> new Document("$sort", new Document("nomeEmpresa", 1).append("empresaId", 1)));
+        return mongo.aggregate(pipeline, "empresas", SituacaoEquipeEmpresa.class)
+                .getMappedResults();
+    }
+
     private Document desde(Instant inicio) {
         return new Document(
                 "$sum",

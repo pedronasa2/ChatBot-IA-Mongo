@@ -49,3 +49,12 @@ A consulta de métricas aceita `empresaId`, `de`, `ate` (ISO-8601) e `intervalo`
 A resposta traz `volume: [{inicio, mensagens}]`, `fusoHorario`, `porEmpresa`, totais de mensagens, último minuto, últimas 24 horas, empresas e usuários ativos, última mensagem e instante de atualização. Não há métricas de recebimentos ou erros. O período filtra o gráfico; os cartões e a tabela mantêm os totais e janelas indicados em seus rótulos.
 
 Falhas tratadas retornam `{mensagem}`. Sessão ausente retorna 401; CSRF inválido ou privilégio insuficiente retorna 403; empresa fora do acesso retorna 404. Cookie SESSION permanece HttpOnly, SameSite=Lax e Secure em produção, sem expiração por inatividade. Renove CSRF depois de login/logout.
+
+## Relatórios por agregação
+
+Ambas as consultas exigem sessão de superusuário e aparecem no Swagger.
+
+| Rota GET | Uso | Pipeline MongoDB |
+| --- | --- | --- |
+| `/api/superusuario/metricas/mensagens-semana?nomeEmpresa=Oficina%20Aurora%20%28Teste%29` | Retorna `{totalMensagens}` para o nome informado, desde segunda-feira à meia-noite no horário de São Paulo até agora. Retorna zero quando não há resultados. | Parte de `empresas` e usa `$match` pelo nome, `$lookup` dos eventos, `$unwind`, `$match` pela data e `$count`. |
+| `/api/superusuario/metricas/situacao-equipes` | Mostra total de funcionários, ativos e inativos por empresa, inclusive empresas sem funcionários. | Parte de `empresas`, associa funcionários com `$lookup` e calcula as contagens por documento com `$filter`, `$size` e `$subtract`. |

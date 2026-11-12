@@ -27,7 +27,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.*;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.time.Instant;
+import java.time.*;
+import java.time.temporal.TemporalAdjusters;
 import java.util.*;
 
 @SpringBootTest
@@ -82,6 +83,57 @@ class BaseIntegrationTest {
         MongoFixture.vinculo(mongo, user, own);
         session = login("owner@example.test");
         master = login("admin@example.test");
+    }
+
+    @Test
+    void contaMensagensDaEmpresaDesdeOSegundoEmQueComecaASemana() throws Exception {
+        var agora = Instant.now();
+        var fuso = ZoneId.of("America/Sao_Paulo");
+        var inicio = agora.atZone(fuso).toLocalDate()
+                .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+                .atStartOfDay(fuso).toInstant();
+
+        mongo.updateFirst(consultaPor("_id", own), new Update().set("nome", "Oficina Aurora (Teste)"), "empresas");
+        mongo.updateFirst(consultaPor("_id", other), new Update().set("nome", "Outra empresa"), "empresas");
+        for (var data : List.of(inicio.minusMillis(1), inicio, agora, agora.plusSeconds(3600))) {
+            mongo.insert(new Document("_id", new ObjectId()).append("empresaId", own)
+                    .append("enviadoEm", Date.from(data)), "eventos_mensagens");
+        }
+        mongo.insert(new Document("_id", new ObjectId()).append("empresaId", other)
+                .append("enviadoEm", Date.from(agora)), "eventos_mensagens");
+
+        var rota = "/api/superusuario/metricas/mensagens-semana";
+        mvc.perform(get(rota).cookie(master).param("nomeEmpresa", "Oficina Aurora (Teste)"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalMensagens").value(2));
+        mvc.perform(get(rota).cookie(master).param("nomeEmpresa", "Empresa sem resultados"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalMensagens").value(0));
+        mvc.perform(get(rota).cookie(session).param("nomeEmpresa", "Oficina Aurora (Teste)"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void situacaoEquipesContaAtivosInativosEMantemEmpresaSemEquipe() throws Exception {
+        mongo.insert(new Document("_id", UUID.randomUUID()).append("empresaId", own)
+                .append("email", "inativo@example.test").append("perfil", "USUARIO")
+                .append("ativo", false), "usuarios");
+        mongo.updateFirst(consultaPor("_id", admin), new Update().set("empresaId", own), "usuarios");
+
+        mongo.updateFirst(consultaPor("_id", own), new Update().set("nome", "Empresa A"), "empresas");
+        mongo.updateFirst(consultaPor("_id", other), new Update().set("nome", "Empresa B"), "empresas");
+
+        var rota = "/api/superusuario/metricas/situacao-equipes";
+        mvc.perform(get(rota).cookie(master))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].empresaId").value(own.toString()))
+                .andExpect(jsonPath("$[0].totalFuncionarios").value(2))
+                .andExpect(jsonPath("$[0].ativos").value(1))
+                .andExpect(jsonPath("$[0].inativos").value(1))
+                .andExpect(jsonPath("$[1].empresaId").value(other.toString()))
+                .andExpect(jsonPath("$[1].totalFuncionarios").value(0));
+        mvc.perform(get(rota).cookie(session)).andExpect(status().isForbidden());
     }
 
     private Cookie login(String email) throws Exception {
