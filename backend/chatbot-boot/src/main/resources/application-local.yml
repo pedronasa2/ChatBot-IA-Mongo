@@ -9,3 +9,9 @@ server:
     session:
       cookie:
         secure: ${COOKIE_SECURE:false}
+
+springdoc:
+  api-docs:
+    enabled: ${SWAGGER_ENABLED:true}
+  swagger-ui:
+    enabled: ${SWAGGER_ENABLED:true}

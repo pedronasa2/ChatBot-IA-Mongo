@@ -129,6 +129,14 @@ A imagem local padrão é MongoDB 8.0. Em kernels incompatíveis com MongoDB 8, 
 
 Para outro servidor, defina `MONGODB_URI` no ambiente. O exemplo sem credenciais reais está em `infra/.env.example`. Codifique caracteres especiais da senha na URI. A conexão precisa de `uuidRepresentation=standard`, nome do banco dedicado, autenticação adequada e replica set. Senhas e tokens não pertencem ao Git ou frontend.
 
+## Testar a API com Swagger UI
+
+Com o backend local iniciado, abra http://localhost:8087/swagger-ui/index.html. A especificação JSON fica em http://localhost:8087/v3/api-docs.
+
+Na seção **Autenticação**, abra `POST /api/auth/login`, clique em **Try it out**, informe `email` e `senha` e clique em **Execute**. O status 204 confirma o login. Depois execute `GET /api/auth/me` ou `GET /api/empresas`. O Swagger envia automaticamente o token CSRF nas gravações e usa a sessão do navegador. `POST /api/auth/logout` encerra a sessão.
+
+O Swagger fica habilitado no perfil `local`. A variável `SWAGGER_ENABLED` controla sua ativação nos demais ambientes.
+
 ## Novas empresas e primeiro acesso
 
 Entre como superusuário e abra **Negócios → Nova empresa**. Informe o nome da empresa, responsável e e-mail. O botão **Criar empresa e simular convite** não envia e-mail: mostra um link para testar a ativação. Abra-o em outra aba (ou janela anônima), informe o e-mail cadastrado e crie/confirme a senha. Depois entre pelo login normal. Em Negócios também é possível consultar o aceite ou simular um reenvio, invalidando o link anterior.

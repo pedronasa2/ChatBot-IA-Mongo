@@ -20,3 +20,13 @@ server:
         http-only: true
         secure: ${COOKIE_SECURE:true}
         same-site: lax
+
+springdoc:
+  api-docs:
+    enabled: ${SWAGGER_ENABLED:false}
+  swagger-ui:
+    enabled: ${SWAGGER_ENABLED:false}
+    disable-swagger-default-url: true
+    operations-sorter: alpha
+    tags-sorter: alpha
+  paths-to-match: /api/**

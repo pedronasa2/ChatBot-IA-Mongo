@@ -9,6 +9,11 @@
     <artifactId>painel-bot</artifactId>
     <dependencies>
         <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>3.2.0</version>
+        </dependency>
+        <dependency>
             <groupId>br.com.painel</groupId>
             <artifactId>chatbot-resource</artifactId>
             <version>${project.version}</version>
