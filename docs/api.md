@@ -52,9 +52,10 @@ Falhas tratadas retornam `{mensagem}`. Sessão ausente retorna 401; CSRF inváli
 
 ## Relatórios por agregação
 
-Ambas as consultas exigem sessão de superusuário e aparecem no Swagger.
+As consultas exigem sessão de superusuário e aparecem no Swagger.
 
 | Rota GET | Uso | Pipeline MongoDB |
 | --- | --- | --- |
 | `/api/superusuario/metricas/mensagens-semana?nomeEmpresa=Oficina%20Aurora%20%28Teste%29` | Retorna `{totalMensagens}` para o nome informado, desde segunda-feira à meia-noite no horário de São Paulo até agora. Retorna zero quando não há resultados. | Parte de `empresas` e usa `$match` pelo nome, `$lookup` dos eventos, `$unwind`, `$match` pela data e `$count`. |
 | `/api/superusuario/metricas/situacao-equipes` | Mostra total de funcionários, ativos e inativos por empresa, inclusive empresas sem funcionários. | Parte de `empresas`, associa funcionários com `$lookup` e calcula as contagens por documento com `$filter`, `$size` e `$subtract`. |
+| `/api/superusuario/metricas/funcionarios-empresa?nomeEmpresa=Oficina%20Aurora%20%28Teste%29` | Retorna `{totalFuncionarios}` com os usuários de perfil `USUARIO`, ativos e inativos, vinculados às empresas com o nome exato informado. Retorna zero quando não há resultados. | Parte de `empresas`, filtra nome com `$match`, busca usuários com `$lookup`, aplica `$unwind`, filtra perfil com `$match` e conta com `$count`. |

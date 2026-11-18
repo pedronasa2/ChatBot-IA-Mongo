@@ -114,6 +114,30 @@ class BaseIntegrationTest {
     }
 
     @Test
+    void contaFuncionariosAtivosEInativosPorNomeDaEmpresa() throws Exception {
+        mongo.updateFirst(consultaPor("_id", own),
+                new Update().set("nome", "Oficina Aurora (Teste)"), "empresas");
+        mongo.insert(new Document("_id", UUID.randomUUID()).append("empresaId", own)
+                .append("perfil", "USUARIO").append("ativo", false), "usuarios");
+        mongo.updateFirst(consultaPor("_id", admin), new Update().set("empresaId", own), "usuarios");
+
+        var rota = "/api/superusuario/metricas/funcionarios-empresa";
+        mvc.perform(get(rota).cookie(master).param("nomeEmpresa", "Oficina Aurora (Teste)"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalFuncionarios").value(2));
+        mvc.perform(get(rota).cookie(master).param("nomeEmpresa", "Empresa inexistente"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalFuncionarios").value(0));
+        mvc.perform(get(rota).cookie(master).param("nomeEmpresa", mongo.findById(other, Empresa.class).nome))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalFuncionarios").value(0));
+        mvc.perform(get(rota).cookie(session).param("nomeEmpresa", "Oficina Aurora (Teste)"))
+                .andExpect(status().isForbidden());
+        mvc.perform(get(rota).param("nomeEmpresa", "Oficina Aurora (Teste)"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
     void situacaoEquipesContaAtivosInativosEMantemEmpresaSemEquipe() throws Exception {
         mongo.insert(new Document("_id", UUID.randomUUID()).append("empresaId", own)
                 .append("email", "inativo@example.test").append("perfil", "USUARIO")

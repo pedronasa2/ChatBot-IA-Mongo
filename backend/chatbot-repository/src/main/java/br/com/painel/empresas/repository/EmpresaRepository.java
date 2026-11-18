@@ -15,6 +15,22 @@ public interface EmpresaRepository extends MongoRepository<Empresa, UUID> {
         "{ $match: { nome: ?0 } }",
         """
         { $lookup: {
+            from: 'usuarios',
+            localField: '_id',
+            foreignField: 'empresaId',
+            as: 'funcionarios'
+        } }
+        """,
+        "{ $unwind: '$funcionarios' }",
+        "{ $match: { 'funcionarios.perfil': 'USUARIO' } }",
+        "{ $count: 'totalFuncionarios' }"
+    })
+    Optional<Long> contarFuncionariosPorNome(String nome);
+
+    @Aggregation(pipeline = {
+        "{ $match: { nome: ?0 } }",
+        """
+        { $lookup: {
             from: 'eventos_mensagens',
             localField: '_id',
             foreignField: 'empresaId',

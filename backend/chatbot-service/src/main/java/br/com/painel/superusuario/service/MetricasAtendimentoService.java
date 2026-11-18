@@ -25,6 +25,10 @@ public class MetricasAtendimentoService {
         this.empresas = empresas;
     }
 
+    public long contarFuncionariosPorNome(String nomeEmpresa) {
+        return empresas.contarFuncionariosPorNome(nomeEmpresa).orElse(0L);
+    }
+
     public long contarMensagensNaSemana(String nomeEmpresa) {
         var agora = Instant.now();
         var fuso = ZoneId.of("America/Sao_Paulo");

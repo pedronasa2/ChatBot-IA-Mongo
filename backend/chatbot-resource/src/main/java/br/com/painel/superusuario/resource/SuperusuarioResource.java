@@ -64,6 +64,13 @@ public class SuperusuarioResource {
         return metricas.consultar(de, ate, intervalo, empresaId);
     }
 
+    @GetMapping("/metricas/funcionarios-empresa")
+    public Map<String, Long> contarFuncionariosPorNome(
+            Principal usuario, @RequestParam String nomeEmpresa) {
+        acesso.exigir(usuario);
+        return Map.of("totalFuncionarios", metricas.contarFuncionariosPorNome(nomeEmpresa));
+    }
+
     @GetMapping("/metricas/mensagens-semana")
     public Map<String, Long> contarMensagensNaSemana(
             Principal usuario, @RequestParam String nomeEmpresa) {
