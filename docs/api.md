@@ -60,15 +60,16 @@ As consultas exigem sessão de superusuário e aparecem no Swagger.
 | `/api/superusuario/metricas/situacao-equipes` | Mostra total de funcionários, ativos e inativos por empresa, inclusive empresas sem funcionários. | Parte de `empresas`, associa funcionários com `$lookup` e calcula as contagens por documento com `$filter`, `$size` e `$subtract`. |
 | `/api/superusuario/metricas/funcionarios-empresa?nomeEmpresa=Oficina%20Aurora%20%28Teste%29` | Retorna `{totalFuncionarios}` com os usuários de perfil `USUARIO`, ativos e inativos, vinculados às empresas com o nome exato informado. Retorna zero quando não há resultados. | Parte de `empresas`, filtra nome com `$match`, busca usuários com `$lookup`, aplica `$unwind`, filtra perfil com `$match` e conta com `$count`. |
 
-## Usuários únicos no dia com Redis
+## Histórico de logins com Bloom Filter
 
-`GET /api/superusuario/metricas/usuarios-unicos-hoje` exige sessão de superusuário e retorna `data` e `usuariosUnicosEstimados`. O dia segue o horário de São Paulo.
+O Redis usa uma chave fixa, `atendeflow:uso:logins`, sem expiração automática. Cada login bem-sucedido registra o e-mail com `BF.ADD`. A coleta nessa chave começa com os novos logins. Os filtros diários anteriores continuam sujeitos ao prazo de expiração original.
 
-Cada login bem-sucedido registra o e-mail da conta no filtro do dia com `BF.ADD`. O Redis representa internamente o item por hashes. `BF.CARD` devolve quantos itens foram aceitos pelo filtro. Logins repetidos da mesma conta entram uma vez e falsos positivos podem fazer a estimativa ficar abaixo do total real. O filtro expira 30 dias após o primeiro registro.
+- `GET /api/superusuario/metricas/login-registrado?email=ana%40example.test` usa `BF.EXISTS` e retorna `possivelmenteFezLogin`. O valor `true` indica presença provável. O valor `false` indica que o e-mail não foi registrado no filtro atual.
+- `GET /api/superusuario/metricas/usuarios-unicos` usa `BF.CARD` e retorna `usuariosUnicosEstimados` desde o início da coleta. Logins repetidos contam uma vez. Falsos positivos podem deixar a estimativa abaixo do total real.
 
-O Compose local inicia o Redis 8 na porta 6379. Use `REDIS_URL` para conectar a outra instância com suporte aos comandos Bloom e `BLOOM_LOGIN_ENABLED` para controlar a coleta, habilitada por padrão no perfil local. Se a coleta estiver desativada ou o Redis falhar, a consulta retorna 503 e o login segue pelo MongoDB.
+As duas rotas exigem sessão de superusuário e retornam 503 quando a coleta está desativada ou o Redis está indisponível. A validação de login continua no MongoDB.
 
-Para demonstrar, faça login duas vezes com a mesma conta e consulte a rota pelo Swagger. Use `BF.EXISTS atendeflow:uso:logins:AAAA-MM-DD email-da-conta` no Redis CLI para conferir a presença provável na chave do dia.
+O Compose local inicia o Redis 8 na porta 6379. Use `REDIS_URL` para conectar a outra instância com suporte a Bloom e `BLOOM_LOGIN_ENABLED` para controlar a coleta, habilitada por padrão no perfil local.
 
 Para rodar o teste de integração com Redis local, suba o serviço e execute:
 

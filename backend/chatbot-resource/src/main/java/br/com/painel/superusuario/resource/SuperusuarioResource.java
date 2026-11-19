@@ -76,13 +76,20 @@ public class SuperusuarioResource {
         return Map.of("totalFuncionarios", metricas.contarFuncionariosPorNome(nomeEmpresa));
     }
 
-    @GetMapping("/metricas/usuarios-unicos-hoje")
-    public UsuariosUnicosHoje usuariosUnicosHoje(Principal usuario) {
+    @GetMapping("/metricas/usuarios-unicos")
+    public Map<String, Long> usuariosUnicos(Principal usuario) {
         acesso.exigir(usuario);
-        var dia = uso.hoje();
-        var estimativa = uso.estimarUsuarios(dia).orElseThrow(
+        var estimativa = uso.estimarUsuarios().orElseThrow(
                 () -> new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE));
-        return new UsuariosUnicosHoje(dia, estimativa);
+        return Map.of("usuariosUnicosEstimados", estimativa);
+    }
+
+    @GetMapping("/metricas/login-registrado")
+    public Map<String, Boolean> consultarLogin(Principal usuario, @RequestParam String email) {
+        acesso.exigir(usuario);
+        var registrado = uso.possivelmenteFezLogin(email).orElseThrow(
+                () -> new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE));
+        return Map.of("possivelmenteFezLogin", registrado);
     }
 
     @GetMapping("/metricas/mensagens-semana")

@@ -164,7 +164,8 @@ class BaseIntegrationTest {
     @Test
     @EnabledIfEnvironmentVariable(named = "TESTAR_REDIS_BLOOM", matches = "true")
     void bloomContaUmaVezCadaUsuarioQueFezLogin() throws Exception {
-        var rota = "/api/superusuario/metricas/usuarios-unicos-hoje";
+        var rota = "/api/superusuario/metricas/usuarios-unicos";
+        var consulta = "/api/superusuario/metricas/login-registrado";
         var email = UUID.randomUUID() + "@example.test";
         var resposta = mvc.perform(get(rota).cookie(master))
                 .andExpect(status().isOk())
@@ -178,8 +179,17 @@ class BaseIntegrationTest {
         mvc.perform(get(rota).cookie(master))
                 .andExpect(jsonPath("$.usuariosUnicosEstimados").value(total));
 
+        mvc.perform(get(consulta).cookie(master).param("email", email))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.possivelmenteFezLogin").value(false));
+
         login(email);
         login(email);
+        mvc.perform(get(consulta).cookie(master).param("email", email.toUpperCase(Locale.ROOT)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.possivelmenteFezLogin").value(true));
+        mvc.perform(get(consulta).cookie(session).param("email", email))
+                .andExpect(status().isForbidden());
         mvc.perform(get(rota).cookie(master))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.usuariosUnicosEstimados").value(total + 1));
