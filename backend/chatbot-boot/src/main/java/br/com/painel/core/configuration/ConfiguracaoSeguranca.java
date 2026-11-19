@@ -1,6 +1,7 @@
 package br.com.painel.core.configuration;
 
 import br.com.painel.autenticacao.repository.UsuarioRepository;
+import br.com.painel.superusuario.service.UsoSistemaService;
 
 import org.springframework.context.annotation.*;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -34,7 +35,7 @@ public class ConfiguracaoSeguranca {
 
     @Bean
     @Profile("!provision & !migracao")
-    SecurityFilterChain security(HttpSecurity http) throws Exception {
+    SecurityFilterChain security(HttpSecurity http, UsoSistemaService uso) throws Exception {
         http.authorizeHttpRequests(
                         a ->
                                 a.requestMatchers(
@@ -68,7 +69,10 @@ public class ConfiguracaoSeguranca {
                                 f.loginProcessingUrl("/api/auth/login")
                                         .usernameParameter("email")
                                         .passwordParameter("senha")
-                                        .successHandler((req, res, auth) -> res.setStatus(204))
+                                        .successHandler((req, res, auth) -> {
+                                            uso.registrarLogin(auth.getName());
+                                            res.setStatus(204);
+                                        })
                                         .failureHandler((req, res, e) -> res.sendError(401)))
                 .logout(
                         l ->

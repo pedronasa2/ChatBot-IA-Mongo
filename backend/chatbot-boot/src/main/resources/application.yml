@@ -1,9 +1,16 @@
 painel:
+  uso:
+    bloom-habilitado: ${BLOOM_LOGIN_ENABLED:false}
   integracao:
     token-metricas: ${METRICS_INGESTION_TOKEN:}
 spring:
   profiles:
     default: local
+  data:
+    redis:
+      url: ${REDIS_URL:redis://localhost:6379}
+      connect-timeout: 500ms
+      timeout: 500ms
   mongodb:
     uri: ${MONGODB_URI:mongodb://localhost:27027/painel_mongo?replicaSet=rs0&directConnection=true&uuidRepresentation=standard}
   session:

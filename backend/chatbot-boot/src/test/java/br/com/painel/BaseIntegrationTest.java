@@ -17,6 +17,7 @@ import jakarta.servlet.http.Cookie;
 import org.bson.Document;
 import org.bson.types.ObjectId;
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -157,6 +158,31 @@ class BaseIntegrationTest {
                 .andExpect(jsonPath("$[0].inativos").value(1))
                 .andExpect(jsonPath("$[1].empresaId").value(other.toString()))
                 .andExpect(jsonPath("$[1].totalFuncionarios").value(0));
+        mvc.perform(get(rota).cookie(session)).andExpect(status().isForbidden());
+    }
+
+    @Test
+    @EnabledIfEnvironmentVariable(named = "TESTAR_REDIS_BLOOM", matches = "true")
+    void bloomContaUmaVezCadaUsuarioQueFezLogin() throws Exception {
+        var rota = "/api/superusuario/metricas/usuarios-unicos-hoje";
+        var email = UUID.randomUUID() + "@example.test";
+        var resposta = mvc.perform(get(rota).cookie(master))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        var total = tools.jackson.databind.json.JsonMapper.builder().build().readTree(resposta)
+                .get("usuariosUnicosEstimados").asLong();
+
+        MongoFixture.usuario(mongo, UUID.randomUUID(), email, encoder.encode("SenhaTeste2026"), false);
+        mvc.perform(post("/api/auth/login").with(csrf()).param("email", email).param("senha", "errada"))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(get(rota).cookie(master))
+                .andExpect(jsonPath("$.usuariosUnicosEstimados").value(total));
+
+        login(email);
+        login(email);
+        mvc.perform(get(rota).cookie(master))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.usuariosUnicosEstimados").value(total + 1));
         mvc.perform(get(rota).cookie(session)).andExpect(status().isForbidden());
     }
 

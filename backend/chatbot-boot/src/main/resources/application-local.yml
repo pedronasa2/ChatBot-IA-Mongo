@@ -3,6 +3,9 @@
 spring:
   config:
     import: optional:file:./config/integracao-local.properties,optional:file:./backend/config/integracao-local.properties,optional:file:./config/banco-local.properties,optional:file:./backend/config/banco-local.properties
+painel:
+  uso:
+    bloom-habilitado: ${BLOOM_LOGIN_ENABLED:true}
 server:
   port: ${SERVER_PORT:8087}
   servlet:

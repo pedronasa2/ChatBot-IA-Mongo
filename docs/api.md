@@ -59,3 +59,20 @@ As consultas exigem sessão de superusuário e aparecem no Swagger.
 | `/api/superusuario/metricas/mensagens-semana?nomeEmpresa=Oficina%20Aurora%20%28Teste%29` | Retorna `{totalMensagens}` para o nome informado, desde segunda-feira à meia-noite no horário de São Paulo até agora. Retorna zero quando não há resultados. | Parte de `empresas` e usa `$match` pelo nome, `$lookup` dos eventos, `$unwind`, `$match` pela data e `$count`. |
 | `/api/superusuario/metricas/situacao-equipes` | Mostra total de funcionários, ativos e inativos por empresa, inclusive empresas sem funcionários. | Parte de `empresas`, associa funcionários com `$lookup` e calcula as contagens por documento com `$filter`, `$size` e `$subtract`. |
 | `/api/superusuario/metricas/funcionarios-empresa?nomeEmpresa=Oficina%20Aurora%20%28Teste%29` | Retorna `{totalFuncionarios}` com os usuários de perfil `USUARIO`, ativos e inativos, vinculados às empresas com o nome exato informado. Retorna zero quando não há resultados. | Parte de `empresas`, filtra nome com `$match`, busca usuários com `$lookup`, aplica `$unwind`, filtra perfil com `$match` e conta com `$count`. |
+
+## Usuários únicos no dia com Redis
+
+`GET /api/superusuario/metricas/usuarios-unicos-hoje` exige sessão de superusuário e retorna `data` e `usuariosUnicosEstimados`. O dia segue o horário de São Paulo.
+
+Cada login bem-sucedido registra o e-mail da conta no filtro do dia com `BF.ADD`. O Redis representa internamente o item por hashes. `BF.CARD` devolve quantos itens foram aceitos pelo filtro. Logins repetidos da mesma conta entram uma vez e falsos positivos podem fazer a estimativa ficar abaixo do total real. O filtro expira 30 dias após o primeiro registro.
+
+O Compose local inicia o Redis 8 na porta 6379. Use `REDIS_URL` para conectar a outra instância com suporte aos comandos Bloom e `BLOOM_LOGIN_ENABLED` para controlar a coleta, habilitada por padrão no perfil local. Se a coleta estiver desativada ou o Redis falhar, a consulta retorna 503 e o login segue pelo MongoDB.
+
+Para demonstrar, faça login duas vezes com a mesma conta e consulte a rota pelo Swagger. Use `BF.EXISTS atendeflow:uso:logins:AAAA-MM-DD email-da-conta` no Redis CLI para conferir a presença provável na chave do dia.
+
+Para rodar o teste de integração com Redis local, suba o serviço e execute:
+
+```bash
+docker compose -p chatbot-mongo-local -f infra/compose.local.yml up -d redis
+TESTAR_REDIS_BLOOM=true mvn -f backend/pom.xml test
+```

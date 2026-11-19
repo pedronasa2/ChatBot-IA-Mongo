@@ -7,7 +7,9 @@ import br.com.painel.superusuario.service.*;
 
 import jakarta.validation.Valid;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.security.Principal;
 import java.time.Instant;
@@ -24,14 +26,17 @@ public class SuperusuarioResource {
     private final PromptGlobalService prompts;
 
     private final MetricasAtendimentoService metricas;
+    private final UsoSistemaService uso;
 
     public SuperusuarioResource(
             AcessoSuperusuario acesso,
             PromptGlobalService prompts,
-            MetricasAtendimentoService metricas) {
+            MetricasAtendimentoService metricas,
+            UsoSistemaService uso) {
         this.acesso = acesso;
         this.prompts = prompts;
         this.metricas = metricas;
+        this.uso = uso;
     }
 
     @GetMapping("/prompt-global")
@@ -69,6 +74,15 @@ public class SuperusuarioResource {
             Principal usuario, @RequestParam String nomeEmpresa) {
         acesso.exigir(usuario);
         return Map.of("totalFuncionarios", metricas.contarFuncionariosPorNome(nomeEmpresa));
+    }
+
+    @GetMapping("/metricas/usuarios-unicos-hoje")
+    public UsuariosUnicosHoje usuariosUnicosHoje(Principal usuario) {
+        acesso.exigir(usuario);
+        var dia = uso.hoje();
+        var estimativa = uso.estimarUsuarios(dia).orElseThrow(
+                () -> new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE));
+        return new UsuariosUnicosHoje(dia, estimativa);
     }
 
     @GetMapping("/metricas/mensagens-semana")
